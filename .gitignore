@@ -1,0 +1,22 @@
+# Unreal generated / build output
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+Platforms/
+.vs/
+.vscode/
+.idea/
+*.sln
+*.slnx
+*.code-workspace
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.suo
+*.xcodeproj
+*.xcworkspace
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
