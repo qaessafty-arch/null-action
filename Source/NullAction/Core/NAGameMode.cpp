@@ -24,6 +24,10 @@
 #include "Interaction/NALootContainer.h"
 #include "Interaction/NANote.h"
 #include "Interaction/NAResourceNode.h"
+#include "Interaction/NAAshShrine.h"
+#include "Core/NAPlayerState.h"
+#include "Combat/NAHealthComponent.h"
+#include "GameFramework/GameStateBase.h"
 
 ANAGameMode::ANAGameMode()
 {
@@ -311,6 +315,97 @@ void ANAGameMode::SpawnArenaContent()
 	// Ash Stalker den in the far back-left corner (behind spawn, to the left).
 	CreatureDenLocation = ArenaTransform.TransformPosition(FVector(-2800.f, 2800.f, 80.f));
 	SpawnCreature();
+
+	SpawnShrines(ArenaTransform);
+}
+
+void ANAGameMode::SpawnShrines(const FTransform& ArenaTransform)
+{
+	UWorld* World = GetWorld();
+	struct FShrineSpot { const TCHAR* Name; FVector Location; float Yaw; };
+	const FVector2D Cabin = NATerrain::CabinCenter();
+	const FVector2D Lake = NATerrain::LakeCenter();
+	const FVector2D LakeShore = Lake + (FVector2D::ZeroVector - Lake).GetSafeNormal() * 9800.f; // Shore side facing the arena.
+	const FShrineSpot Spots[] =
+	{
+		{ TEXT("Arena Shrine"),    ArenaTransform.TransformPosition(FVector(300.f, -2600.f, 0.f)), 0.f },
+		{ TEXT("Cabin Shrine"),    FVector(Cabin.X + 200.f, Cabin.Y - 1300.f, NATerrain::HeightAt(Cabin.X + 200.f, Cabin.Y - 1300.f)), 180.f },
+		{ TEXT("Lakeside Shrine"), FVector(LakeShore.X, LakeShore.Y, FMath::Max(NATerrain::WaterLevel() + 50.f, NATerrain::HeightAt(LakeShore.X, LakeShore.Y))), -45.f },
+	};
+	for (const FShrineSpot& Spot : Spots)
+	{
+		const FTransform Where(FRotator(0.f, Spot.Yaw, 0.f), Spot.Location);
+		if (ANAAshShrine* Shrine = World->SpawnActorDeferred<ANAAshShrine>(ANAAshShrine::StaticClass(), Where,
+			nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+		{
+			Shrine->SetShrineName(Spot.Name);
+			Shrine->FinishSpawning(Where);
+		}
+	}
+}
+
+float ANAGameMode::ServerNow() const
+{
+	const AGameStateBase* State = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	return State ? static_cast<float>(State->GetServerWorldTimeSeconds()) : 0.f;
+}
+
+bool ANAGameMode::HandlePlayerDeathItems(ANACharacterBase* Victim, APlayerController* PlayerController)
+{
+	ANAPlayerCharacter* PlayerBody = Cast<ANAPlayerCharacter>(Victim);
+	ANAPlayerState* VictimState = PlayerController ? PlayerController->GetPlayerState<ANAPlayerState>() : nullptr;
+	UNAInventoryComponent* Inventory = PlayerBody ? PlayerBody->GetInventoryComponent() : nullptr;
+	if (!VictimState || !Inventory)
+	{
+		return false;
+	}
+
+	const float Now = ServerNow();
+	ANAAshShrine* Shrine = Cast<ANAAshShrine>(VictimState->GetAttunedShrine());
+	const float CooldownLeft = ANAPlayerState::RebirthCooldownSeconds - (Now - VictimState->LastRebirthTime);
+	const bool bRebirth = Shrine && VictimState->GetAshCharges() > 0 && CooldownLeft <= 0.f;
+	const TArray<FNAItemStack> Carried = Inventory->GetItems();
+	ANAPlayerController* NAController = Cast<ANAPlayerController>(PlayerController);
+
+	if (bRebirth)
+	{
+		FPendingRebirth& Pending = PendingRebirths.FindOrAdd(PlayerController);
+		Pending.Shrine = Shrine;
+		Pending.Items = Carried;
+		VictimState->SetAshCharges(VictimState->GetAshCharges() - 1);
+		VictimState->LastRebirthTime = Now;
+		SystemMessage(NAController, FString::Printf(TEXT("ASH REBIRTH: you will rise at %s with your items. Charges left: %d"),
+			*Shrine->GetShrineName(), VictimState->GetAshCharges()));
+	}
+	else
+	{
+		// Everything you carried falls where you died, for anyone to take.
+		const FVector Center = Victim->GetActorLocation();
+		int32 Index = 0;
+		for (const FNAItemStack& Stack : Carried)
+		{
+			const float Angle = Index++ * 0.9f;
+			const FVector Offset(FMath::Cos(Angle) * 90.f, FMath::Sin(Angle) * 90.f, 0.f);
+			ANAItemPickup::Drop(GetWorld(), Center + Offset, Stack.ItemId, Stack.Count);
+		}
+		if (!Shrine)
+		{
+			SystemMessage(NAController, TEXT("You dropped your items. Attune to an Ash Shrine to be reborn with them next time."));
+		}
+		else if (VictimState->GetAshCharges() <= 0)
+		{
+			SystemMessage(NAController, TEXT("No Ash charges left - your items were dropped. Offer Ember Fangs at a shrine for more."));
+		}
+		else
+		{
+			SystemMessage(NAController, FString::Printf(TEXT("The shrine is still recovering (%d s) - your items were dropped."), FMath::CeilToInt(CooldownLeft)));
+		}
+	}
+	for (const FNAItemStack& Stack : Carried)
+	{
+		Inventory->RemoveItem(Stack.ItemId, Stack.Count);
+	}
+	return bRebirth;
 }
 
 void ANAGameMode::SpawnCreature()
@@ -427,6 +522,7 @@ void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Kille
 	}
 
 	APlayerController* PlayerController = Cast<APlayerController>(VictimController);
+	const bool bRebirth = HandlePlayerDeathItems(Victim, PlayerController);
 	PlayerController->UnPossess();
 	// Keep looking at your body while you wait.
 	PlayerController->SetViewTarget(Victim);
@@ -435,13 +531,46 @@ void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Kille
 	FTimerHandle Handle;
 	GetWorldTimerManager().SetTimer(Handle,
 		FTimerDelegate::CreateUObject(this, &ANAGameMode::RespawnPlayer, TWeakObjectPtr<AController>(VictimController)),
-		RespawnDelaySeconds, false);
+		bRebirth ? 3.f : RespawnDelaySeconds, false);
 }
 
 void ANAGameMode::RespawnPlayer(TWeakObjectPtr<AController> Controller)
 {
-	if (Controller.IsValid() && !Controller->GetPawn())
+	if (!Controller.IsValid() || Controller->GetPawn())
 	{
-		RestartPlayer(Controller.Get());
+		return;
 	}
+	RestartPlayer(Controller.Get());
+
+	FPendingRebirth Pending;
+	if (!PendingRebirths.RemoveAndCopyValue(Controller, Pending))
+	{
+		return;
+	}
+	ANAPlayerCharacter* Reborn = Cast<ANAPlayerCharacter>(Controller->GetPawn());
+	ANAAshShrine* Shrine = Pending.Shrine.Get();
+	if (!Reborn || !Shrine)
+	{
+		return;
+	}
+	// Rise at the shrine: your items return, but you come back weakened and Ash-touched (slower) for a while.
+	const FTransform At = Shrine->GetRebirthTransform();
+	Reborn->TeleportTo(At.GetLocation(), At.Rotator(), false, true);
+	Controller->ClientSetRotation(At.Rotator());
+	if (UNAInventoryComponent* Inventory = Reborn->GetInventoryComponent())
+	{
+		for (const FNAItemStack& Stack : Pending.Items)
+		{
+			Inventory->AddItem(Stack.ItemId, Stack.Count, false);
+		}
+	}
+	if (UNAHealthComponent* Health = Reborn->GetHealthComponent())
+	{
+		Health->Revive(0.6f);
+	}
+	if (ANAPlayerState* State = Controller->GetPlayerState<ANAPlayerState>())
+	{
+		State->SetAshTouchedUntil(ServerNow() + 120.f);
+	}
+	Shrine->MulticastRebirthFlare();
 }

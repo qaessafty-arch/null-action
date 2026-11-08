@@ -1,6 +1,8 @@
 #include "Core/NAPlayerController.h"
 
 #include "Core/NAGameMode.h"
+#include "Core/NAPlayerState.h"
+#include "Character/NACharacterBase.h"
 #include "Engine/World.h"
 
 // ----- Chat ----------------------------------------------------------------------------------------
@@ -25,6 +27,39 @@ void ANAPlayerController::NAUnmute(const FString& PlayerName)
 void ANAPlayerController::NAReport(const FString& PlayerName, const FString& Reason)
 {
 	ServerReport(PlayerName, Reason);
+}
+
+void ANAPlayerController::NAClass(const FString& ClassName)
+{
+	ServerSetClass(ClassName);
+}
+
+void ANAPlayerController::ServerSetClass_Implementation(const FString& ClassName)
+{
+	ANAPlayerState* State = GetPlayerState<ANAPlayerState>();
+	const ANACharacterBase* Body = Cast<ANACharacterBase>(GetPawn());
+	if (!State || (Body && Body->IsDowned()))
+	{
+		return;
+	}
+	struct FClassName { const TCHAR* Name; ENAArchetype Value; const TCHAR* Power; };
+	const FClassName Classes[] =
+	{
+		{ TEXT("Phantom"),  ENAArchetype::Phantom,  TEXT("Q: Cloak - invisible for 8 s; shooting or taking damage reveals you.") },
+		{ TEXT("Hunter"),   ENAArchetype::Hunter,   TEXT("Q: Tracking Pulse - see enemies and creatures within 80 m through walls for 10 s.") },
+		{ TEXT("Storm"),    ENAArchetype::Storm,    TEXT("Q: Lightning Strike - 70 damage where you aim, after a short warning.") },
+		{ TEXT("Guardian"), ENAArchetype::Guardian, TEXT("Q: Restoration Field - heals you and teammates nearby; faster revives inside it.") },
+	};
+	for (const FClassName& Entry : Classes)
+	{
+		if (ClassName.Equals(Entry.Name, ESearchCase::IgnoreCase))
+		{
+			State->SetArchetype(Entry.Value);
+			ClientReceiveChat(ENAChatChannel::System, FString(), FString::Printf(TEXT("Class: %s. %s"), Entry.Name, Entry.Power));
+			return;
+		}
+	}
+	ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("Usage: NAClass Phantom | Hunter | Storm | Guardian"));
 }
 
 void ANAPlayerController::ServerSendChat_Implementation(ENAChatChannel Channel, const FString& Target, const FString& Message)

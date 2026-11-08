@@ -16,13 +16,14 @@ Source/
   NullActionServer.Target.cs  Dedicated server target (packaging needs a source-built engine)
   NullAction/
     Core/       Game mode (+ NAGameMode_Online: roles, bans, chat, admin, records), game/player state, player controller, HUD
-    Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
+    Character/  ANACharacterBase (shared humanoid, downed state), ANAPlayerCharacter (camera + input; _Survival: gather/build; _Rescue: revive, carry, cloak visuals)
+    Abilities/  UNAAbilityComponent: one class power on Q (Cloak, Tracking Pulse, Lightning Strike, Restoration Field), server-owned energy/cooldowns
     Animation/  UNAAnimInstance — native parent for every character AnimBP
     World/      ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust), ANATerrainManager (streamed procedural terrain + forest), ANACabin
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component
-    Interaction/ INAInteractable interface, weapon/supply/item pickups, resource nodes, doors, loot crates, readable notes
+    Interaction/ INAInteractable interface, weapon/supply/item pickups, resource nodes, doors, loot crates, readable notes, Ash Shrines (rebirth points)
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
     Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
     Inventory/  Item/recipe registry (NAItems), replicated inventory component with crafting
@@ -39,6 +40,8 @@ NULL_ACTION_STATUS.md   Live progress report
 | `ANACharacterBase` | All | Locomotion speeds, replicated `Gait` (Walk/Run/Sprint), crouch, body mesh resolution. Shared by players **and** future enemy bots/NPCs. |
 | `ANAPlayerCharacter` | All (input on owning client) | Over-shoulder spring-arm camera, Enhanced Input bindings. |
 | `UNAAnimInstance` | All | Computes speed, direction, aim pitch, falling/crouch/sprint flags for AnimBPs. |
+| `ANAAshShrine` | Server-spawned, replicated | Attunement and Ember Fang offerings; the game mode reborns attuned players with charges here (items kept). Normal deaths drop the inventory as pickups. |
+| `UNAAbilityComponent` | Server owns state, replicated | Class power on Q; strike location validated (range + line of sight) on the server. |
 | `ANAHUD` | Owning client | Dev overlay (controls, gait, speed, net mode). Replaced by UMG later. |
 | `ANATestArena` | Server-spawned, replicated | Stairs, ramp, jump boxes, crouch tunnel, camera-collision pillars, sun/sky/fog. |
 

@@ -85,6 +85,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "NullAction|Health")
 	bool IsDead() const;
 
+	/** Players at 0 health are downed (crawling, bleeding out) until revived. */
+	UFUNCTION(BlueprintPure, Category = "NullAction|Health")
+	bool IsDowned() const;
+
+	/** Server: about to take damage (e.g. breaks a cloak). */
+	virtual void OnTookDamageHook() {}
+
+	/** Server: just fired a weapon. */
+	virtual void OnFiredWeaponHook() {}
+
 	// ----- Weapons -----
 
 	/** Server only. Gives a weapon (or ammo, if already owned). Returns nullptr if nothing was gained. */
@@ -123,6 +133,12 @@ protected:
 
 	/** Server: called when this character dies. Base informs the game mode. */
 	virtual void OnKilled(AController* Killer);
+
+	/** Extra speed multiplier for temporary states (carrying, recovering, ash-touched...). */
+	virtual float GetExtraSpeedMultiplier() const { return 1.f; }
+
+	/** Every machine: the character went down / got back up. */
+	virtual void OnDownedChanged(bool bNowDowned);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NullAction|Health")
 	TObjectPtr<UNAHealthComponent> HealthComponent;
@@ -231,6 +247,9 @@ private:
 
 	UFUNCTION()
 	void HandleHealthChanged(float NewHealth, float Delta);
+
+	UFUNCTION()
+	void HandleDownedStateChanged(bool bNowDowned);
 
 	void ResolveAppearance();
 	void UpdateFallbackBodyHeight();

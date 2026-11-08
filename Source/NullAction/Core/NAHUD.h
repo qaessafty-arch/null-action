@@ -24,6 +24,10 @@ private:
 	void DrawKillFeed(float ScreenW);
 	void DrawScoreboard(float ScreenW, float ScreenH);
 	void DrawInventory(class ANAPlayerCharacter* Player, float ScreenW, float ScreenH);
+	// NAHUD_Powers.cpp
+	void DrawPowers(class ANAPlayerCharacter* Player, float ScreenW, float ScreenH);
+	void DrawDeathScreen(float ScreenW, float ScreenH);
+	bool ProjectToScreen(const FVector& WorldLocation, FVector2D& OutScreen) const;
 
 	bool bShowScoreboard = false;
 

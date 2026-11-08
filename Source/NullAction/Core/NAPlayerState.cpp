@@ -8,6 +8,11 @@ void ANAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANAPlayerState, Kills);
 	DOREPLIFETIME(ANAPlayerState, Deaths);
 	DOREPLIFETIME(ANAPlayerState, PlayerRole);
+	DOREPLIFETIME(ANAPlayerState, AshCharges);
+	DOREPLIFETIME(ANAPlayerState, AttunedShrineName);
+	DOREPLIFETIME(ANAPlayerState, AshTouchedUntil);
+	DOREPLIFETIME(ANAPlayerState, Archetype);
+	DOREPLIFETIME(ANAPlayerState, LastRebirthTime);
 }
 
 void ANAPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -19,6 +24,11 @@ void ANAPlayerState::CopyProperties(APlayerState* PlayerState)
 		Target->Kills = Kills;
 		Target->Deaths = Deaths;
 		Target->PlayerRole = PlayerRole;
+		Target->AshCharges = AshCharges;
+		Target->AttunedShrineName = AttunedShrineName;
+		Target->AttunedShrine = AttunedShrine;
+		Target->Archetype = Archetype;
+		Target->LastRebirthTime = LastRebirthTime;
 	}
 }
 

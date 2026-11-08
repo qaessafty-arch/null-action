@@ -8,6 +8,7 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNAOnHealthChanged, float, NewHealth, float, Delta);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNAOnDeathStateChanged, bool, bIsDead);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNAOnKilled, AActor*, Victim, AController*, Killer);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNAOnDownedStateChanged, bool, bIsDowned);
 
 /**
  * Replicated health and armor. Only the server changes values; clients get them by replication.
@@ -22,6 +23,14 @@ public:
 	UNAHealthComponent();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	/** Players: instead of dying at 0 health, go down and bleed out until revived. */
+	void SetCanBeDowned(bool bAllow) { bCanBeDowned = bAllow; }
+	bool IsDowned() const { return bDowned; }
+
+	/** Server only: a teammate finished reviving us. */
+	void ReviveFromDowned(float HealthFraction);
 
 	/** Server only. Returns the health actually removed. */
 	float ApplyDamage(float Amount, ENAHitZone Zone, AController* Instigator, AActor* Causer, bool bBypassArmor = false);
@@ -62,6 +71,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "NullAction|Health")
 	FNAOnKilled OnKilled;
 
+	/** Fires on every machine when the owner goes down or gets back up. */
+	UPROPERTY(BlueprintAssignable, Category = "NullAction|Health")
+	FNAOnDownedStateChanged OnDownedStateChanged;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -87,6 +100,16 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_Dead)
 	bool bDead = false;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Downed)
+	bool bDowned = false;
+
+	/** While downed, Health becomes a bleed-out pool that drains over time. */
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Health") float DownedPoolFraction = 0.5f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Health") float BleedOutPerSecond = 1.6f;
+
+	UFUNCTION()
+	void OnRep_Downed();
+
 	UFUNCTION()
 	void OnRep_Health(float OldHealth);
 
@@ -98,4 +121,7 @@ private:
 
 	float LastDamageTime = -100.f;
 	bool bInvulnerable = false;
+	bool bCanBeDowned = false;
+	TWeakObjectPtr<AController> DownedBy;
+	void Die(AController* Killer);
 };

@@ -155,6 +155,10 @@ void ANACreatureAIController::UpdatePrey(float Now)
 		{
 			continue;
 		}
+		if (Player->IsCloaked() && GetPawn() && FVector::Dist(Player->GetActorLocation(), GetPawn()->GetActorLocation()) > 300.f)
+		{
+			continue; // A cloaked Phantom is only noticed right up close.
+		}
 		const float Distance = FVector::Dist(Player->GetActorLocation(), Self->GetActorLocation());
 		if (Distance < NearestDistance && LineOfSightTo(Player))
 		{

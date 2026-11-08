@@ -5,7 +5,8 @@
 
 UNAHealthComponent::UNAHealthComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false; // Only ticks while downed (bleeding out).
 	SetIsReplicatedByDefault(true);
 }
 
@@ -15,6 +16,7 @@ void UNAHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(UNAHealthComponent, Health);
 	DOREPLIFETIME(UNAHealthComponent, Armor);
 	DOREPLIFETIME(UNAHealthComponent, bDead);
+	DOREPLIFETIME(UNAHealthComponent, bDowned);
 }
 
 void UNAHealthComponent::BeginPlay()
@@ -36,7 +38,7 @@ float UNAHealthComponent::ApplyDamage(float Amount, ENAHitZone Zone, AController
 	}
 
 	float ToHealth = Amount;
-	if (!bBypassArmor && Zone != ENAHitZone::Head && Armor > 0.f)
+	if (!bDowned && !bBypassArmor && Zone != ENAHitZone::Head && Armor > 0.f)
 	{
 		const float Absorbed = FMath::Min(Armor, Amount * ArmorAbsorption);
 		Armor -= Absorbed;
@@ -45,13 +47,23 @@ float UNAHealthComponent::ApplyDamage(float Amount, ENAHitZone Zone, AController
 
 	const float OldHealth = Health;
 	Health = FMath::Clamp(Health - ToHealth, 0.f, MaxHealth);
-	NotifyHealthChanged(OldHealth);
 
+	if (Health <= 0.f && bCanBeDowned && !bDowned)
+	{
+		// Go down instead of dying: health becomes a bleed-out pool.
+		bDowned = true;
+		DownedBy = Instigator;
+		Health = MaxHealth * DownedPoolFraction;
+		SetComponentTickEnabled(true);
+		NotifyHealthChanged(OldHealth);
+		OnDownedStateChanged.Broadcast(true);
+		return OldHealth;
+	}
+
+	NotifyHealthChanged(OldHealth);
 	if (Health <= 0.f)
 	{
-		bDead = true;
-		OnDeathStateChanged.Broadcast(true);
-		OnKilled.Broadcast(Owner, Instigator);
+		Die(Instigator ? Instigator : DownedBy.Get());
 	}
 	return OldHealth - Health;
 }
@@ -88,12 +100,71 @@ void UNAHealthComponent::Revive(float HealthFraction)
 	const float OldHealth = Health;
 	Health = FMath::Clamp(HealthFraction, 0.01f, 1.f) * MaxHealth;
 	Armor = FMath::Clamp(StartingArmor, 0.f, MaxArmor);
+	if (bDowned)
+	{
+		bDowned = false;
+		SetComponentTickEnabled(false);
+		OnDownedStateChanged.Broadcast(false);
+	}
 	if (bDead)
 	{
 		bDead = false;
 		OnDeathStateChanged.Broadcast(false);
 	}
 	NotifyHealthChanged(OldHealth);
+}
+
+void UNAHealthComponent::Die(AController* Killer)
+{
+	const bool bWasDowned = bDowned;
+	bDowned = false;
+	bDead = true;
+	SetComponentTickEnabled(false);
+	if (bWasDowned)
+	{
+		OnDownedStateChanged.Broadcast(false);
+	}
+	OnDeathStateChanged.Broadcast(true);
+	OnKilled.Broadcast(GetOwner(), Killer);
+}
+
+void UNAHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (!bDowned || !GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	// Bleeding out.
+	const float OldHealth = Health;
+	Health = FMath::Max(0.f, Health - BleedOutPerSecond * DeltaTime);
+	if (FMath::FloorToInt(OldHealth) != FMath::FloorToInt(Health))
+	{
+		OnHealthChanged.Broadcast(Health, Health - OldHealth);
+	}
+	if (Health <= 0.f && !bInvulnerable)
+	{
+		Die(DownedBy.Get());
+	}
+}
+
+void UNAHealthComponent::ReviveFromDowned(float HealthFraction)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !bDowned)
+	{
+		return;
+	}
+	const float OldHealth = Health;
+	bDowned = false;
+	SetComponentTickEnabled(false);
+	Health = FMath::Clamp(HealthFraction, 0.05f, 1.f) * MaxHealth;
+	OnDownedStateChanged.Broadcast(false);
+	NotifyHealthChanged(OldHealth);
+}
+
+void UNAHealthComponent::OnRep_Downed()
+{
+	OnDownedStateChanged.Broadcast(bDowned);
 }
 
 void UNAHealthComponent::OnRep_Health(float OldHealth)

@@ -151,7 +151,7 @@ void ANAWeapon::StopFire()
 void ANAWeapon::FireOnce()
 {
 	ANACharacterBase* Character = GetOwningCharacter();
-	if (!Character || Character->IsDead() || bReloading || IsHidden())
+	if (!Character || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden())
 	{
 		StopFire();
 		return;
@@ -197,10 +197,11 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 {
 	ANACharacterBase* Character = GetOwningCharacter();
 	UWorld* World = GetWorld();
-	if (!Character || !World || Character->IsDead() || bReloading || IsHidden() || AmmoInMagazine <= 0)
+	if (!Character || !World || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden() || AmmoInMagazine <= 0)
 	{
 		return;
 	}
+	Character->OnFiredWeaponHook(); // e.g. firing breaks a cloak
 
 	// Anti-cheat: enforce fire rate (with a little slack for network jitter).
 	const float Now = World->GetTimeSeconds();

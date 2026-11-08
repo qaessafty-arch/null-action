@@ -65,6 +65,8 @@ public:
 	UFUNCTION(Exec) void NAMute(const FString& PlayerName);
 	UFUNCTION(Exec) void NAUnmute(const FString& PlayerName);
 	UFUNCTION(Exec) void NAReport(const FString& PlayerName, const FString& Reason);
+	/** Pick your class: Phantom, Hunter, Storm or Guardian (each has one power on Q). */
+	UFUNCTION(Exec) void NAClass(const FString& ClassName);
 
 	// ----- Admin / owner (console; server checks permission) -----
 	UFUNCTION(Exec) void NAGod();
@@ -91,6 +93,9 @@ public:
 	const TArray<FNAChatLine>& GetChatLog() const { return ChatLog; }
 
 protected:
+	UFUNCTION(Server, Reliable)
+	void ServerSetClass(const FString& ClassName);
+
 	UFUNCTION(Server, Reliable)
 	void ServerSendChat(ENAChatChannel Channel, const FString& Target, const FString& Message);
 

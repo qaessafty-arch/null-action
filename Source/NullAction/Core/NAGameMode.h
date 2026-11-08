@@ -5,10 +5,12 @@
 #include "Core/NAPlayerController.h"
 #include "Core/NAPlayerState.h"
 #include "AI/NAAITypes.h"
+#include "Inventory/NAInventoryComponent.h"
 #include "NAGameMode.generated.h"
 
 class ANACharacterBase;
 class ANATestArena;
+class ANAAshShrine;
 class APlayerStart;
 class ANAEnemySoldier;
 class ANACreature;
@@ -96,6 +98,10 @@ private:
 	void RespawnPlayer(TWeakObjectPtr<AController> Controller);
 	void SpawnEnemy(int32 PostIndex);
 	void SpawnCreature();
+	void SpawnShrines(const FTransform& ArenaTransform);
+	/** Server: a player died. Rebirth at their shrine (keeping items) or drop everything where they fell. Returns true for a rebirth. */
+	bool HandlePlayerDeathItems(ANACharacterBase* Victim, APlayerController* PlayerController);
+	float ServerNow() const;
 
 	// ----- Online: identity, permissions, persistence (NAGameMode_Online.cpp) -----
 	void LoadServerLists();
@@ -123,6 +129,13 @@ private:
 		TArray<FVector> Patrol;
 	};
 	TArray<FEnemyPost> EnemyPosts;
+
+	struct FPendingRebirth
+	{
+		TWeakObjectPtr<ANAAshShrine> Shrine;
+		TArray<FNAItemStack> Items;
+	};
+	TMap<TWeakObjectPtr<AController>, FPendingRebirth> PendingRebirths;
 	TMap<TWeakObjectPtr<ANAEnemySoldier>, int32> EnemyPostByActor;
 
 	UPROPERTY(Transient)

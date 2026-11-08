@@ -257,9 +257,7 @@ void ANAHUD::DrawHUD()
 		const ANACharacterBase* Watched = PC ? Cast<ANACharacterBase>(PC->GetViewTarget()) : nullptr;
 		if (Watched && Watched->IsDead())
 		{
-			DrawRect(FLinearColor(0.15f, 0.f, 0.f, 0.35f), 0.f, 0.f, ScreenW, ScreenH);
-			DrawText(TEXT("YOU WERE KILLED"), Accent, CenterX - 110.f, CenterY - 30.f, nullptr, 2.f);
-			DrawText(TEXT("Respawning..."), TextColor, CenterX - 50.f, CenterY + 15.f, nullptr, 1.1f);
+			DrawDeathScreen(ScreenW, ScreenH);
 		}
 		return;
 	}
@@ -314,11 +312,12 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.9"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 1.0"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
 		Line(TEXT("I inventory & crafting   E gather (trees, rocks, herbs, berries, scrap)"), TextColor);
+		Line(TEXT("Q class power   Console: NAClass Phantom|Hunter|Storm|Guardian   Downed teammate: tap E to revive, Crouch+E to carry"), TextColor);
 		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive NAWeather NATime ...)"), TextColor);
 		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)
 		{
@@ -448,6 +447,9 @@ void ANAHUD::DrawHUD()
 		DrawRect(Dim, CenterX - 260.f, CenterY + 100.f, 520.f, 26.f);
 		DrawText(BuildText, Player->IsPlacementValid() ? FLinearColor(0.5f, 1.f, 0.5f) : Accent, CenterX - 250.f, CenterY + 104.f, nullptr, 0.95f);
 	}
+
+	// ----- Downed, revive, carry, class power, Ash charges -----
+	DrawPowers(Player, ScreenW, ScreenH);
 
 	// ----- Inventory / crafting panel -----
 	if (Player->IsInventoryOpen())

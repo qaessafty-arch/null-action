@@ -108,6 +108,7 @@ void ANACharacterBase::BeginPlay()
 
 	HealthComponent->OnDeathStateChanged.AddDynamic(this, &ANACharacterBase::HandleDeathStateChanged);
 	HealthComponent->OnHealthChanged.AddDynamic(this, &ANACharacterBase::HandleHealthChanged);
+	HealthComponent->OnDownedStateChanged.AddDynamic(this, &ANACharacterBase::HandleDownedStateChanged);
 	if (HasAuthority())
 	{
 		HealthComponent->OnKilled.AddDynamic(this, &ANACharacterBase::HandleKilled);
@@ -211,6 +212,17 @@ void ANACharacterBase::ApplyGait()
 		Speed *= 0.75f;
 		CrouchedSpeed *= 0.75f;
 	}
+
+	// Downed: crawl.
+	if (IsDowned())
+	{
+		Speed = 60.f;
+		CrouchedSpeed = 60.f;
+	}
+
+	const float Extra = GetExtraSpeedMultiplier();
+	Speed *= Extra;
+	CrouchedSpeed *= Extra;
 
 	// Deep snow / blizzards slow everyone.
 	if (const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
@@ -357,12 +369,44 @@ bool ANACharacterBase::IsDead() const
 	return HealthComponent && HealthComponent->IsDead();
 }
 
+bool ANACharacterBase::IsDowned() const
+{
+	return HealthComponent && HealthComponent->IsDowned();
+}
+
+void ANACharacterBase::HandleDownedStateChanged(bool bNowDowned)
+{
+	OnDownedChanged(bNowDowned);
+}
+
+void ANACharacterBase::OnDownedChanged(bool bNowDowned)
+{
+	if (bNowDowned)
+	{
+		if (CurrentWeapon) { CurrentWeapon->StopFire(); }
+		bIsAiming = false;
+		bIsProne = false;
+		if (HasAuthority() || IsLocallyControlled()) { Crouch(); } // Low capsule while crawling.
+		// Teammates must be able to aim the interact key at a downed body.
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	}
+	else if (!IsDead())
+	{
+		if (HasAuthority() || IsLocallyControlled()) { UnCrouch(); }
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, DefaultCapsuleVisibilityResponse);
+	}
+	UpdateRotationMode();
+	ApplyGait();
+	UpdateFallbackBodyHeight();
+}
+
 float ANACharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (GetWorld() && GetWorld()->GetTimeSeconds() < InvulnerableUntil)
 	{
 		return 0.f; // Mid-dodge.
 	}
+	OnTookDamageHook();
 
 	const float Damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	if (Damage <= 0.f || !HealthComponent)
@@ -677,7 +721,7 @@ void ANACharacterBase::UpdateFallbackBodyHeight()
 	const float HalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 	const float Radius = GetCapsuleComponent()->GetUnscaledCapsuleRadius();
 
-	if (bIsProne && !IsDead())
+	if ((bIsProne || IsDowned()) && !IsDead())
 	{
 		// Lying flat along the facing direction, on the ground.
 		constexpr float BodyLength = 170.f;

@@ -179,9 +179,13 @@ void ANAEnemyAIController::UpdatePerception(float DeltaSeconds, float Now)
 	for (AActor* Actor : Seen)
 	{
 		ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(Actor);
-		if (!Player || Player->IsDead())
+		if (!Player || Player->IsDead() || Player->IsDowned())
 		{
-			continue;
+			continue; // Downed players are left alone so teammates get a chance to revive them.
+		}
+		if (Player->IsCloaked() && FVector::Dist(Player->GetActorLocation(), Self->GetActorLocation()) > 300.f)
+		{
+			continue; // A cloaked Phantom is only noticed right up close.
 		}
 		const float Distance = FVector::Dist(Player->GetActorLocation(), Self->GetActorLocation());
 		if (Distance < NearestDistance && LineOfSightTo(Player))
@@ -217,7 +221,7 @@ void ANAEnemyAIController::UpdatePerception(float DeltaSeconds, float Now)
 
 	if (const ANACharacterBase* Current = Cast<ANACharacterBase>(Target.Get()))
 	{
-		if (Current->IsDead())
+		if (Current->IsDead() || Current->IsDowned())
 		{
 			Target = nullptr;
 			bTargetVisible = false;

@@ -201,6 +201,10 @@ void ANAPlayerCharacter::Input_MenuConfirm()
 
 void ANAPlayerCharacter::StartBuilding(FName ItemId)
 {
+	if (IsDowned() || CarriedPlayer)
+	{
+		return;
+	}
 	ENABuildPieceType Type;
 	if (!ANABuildPiece::TypeForItem(ItemId, Type))
 	{

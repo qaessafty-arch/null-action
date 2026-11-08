@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Character/NACharacterBase.h"
 #include "Building/NABuildPiece.h"
+#include "Interaction/NAInteractable.h"
 #include "NAPlayerCharacter.generated.h"
 
 class USpringArmComponent;
@@ -11,6 +12,7 @@ class UInputMappingContext;
 class UInputAction;
 class UNASurvivalComponent;
 class UNAInventoryComponent;
+class UNAAbilityComponent;
 class UStaticMeshComponent;
 
 struct FInputActionValue;
@@ -23,7 +25,7 @@ struct FInputActionValue;
  * is left empty, a complete default keyboard/mouse + gamepad scheme is built in code.
  */
 UCLASS()
-class NULLACTION_API ANAPlayerCharacter : public ANACharacterBase
+class NULLACTION_API ANAPlayerCharacter : public ANACharacterBase, public INAInteractable
 {
 	GENERATED_BODY()
 
@@ -55,6 +57,19 @@ public:
 	UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	UNASurvivalComponent* GetSurvivalComponent() const { return SurvivalComponent; }
 	UNAInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+	UNAAbilityComponent* GetAbilityComponent() const { return AbilityComponent; }
+
+	// ----- Rescue (NAPlayerCharacter_Rescue.cpp) -----
+	virtual FText GetInteractionPrompt(const ANACharacterBase* User) const override;
+	virtual bool CanInteract(const ANACharacterBase* User) const override;
+	virtual void Interact(ANACharacterBase* User) override;
+	virtual void OnTookDamageHook() override;
+	virtual void OnFiredWeaponHook() override;
+	float GetReviveProgress() const { return ReviveProgress; }
+	ANAPlayerCharacter* GetCarriedPlayer() const { return CarriedPlayer; }
+	bool IsBeingCarried() const { return CarriedBy != nullptr; }
+	bool IsRecovering() const;
+	bool IsCloaked() const;
 
 	// ----- Inventory menu (local UI state, read by the HUD) -----
 	bool IsInventoryOpen() const { return bInventoryOpen; }
@@ -89,6 +104,22 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> BuildPreview;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NullAction|Ability")
+	TObjectPtr<UNAAbilityComponent> AbilityComponent;
+
+	/** Revive progress 0..1 from teammates' steady E taps (CPR rhythm). */
+	UPROPERTY(Replicated) float ReviveProgress = 0.f;
+	/** Server time until the post-revive weakness wears off. */
+	UPROPERTY(Replicated) float RecoveringUntil = -1.f;
+	UPROPERTY(ReplicatedUsing = OnRep_CarriedBy) TObjectPtr<ANAPlayerCharacter> CarriedBy;
+	UPROPERTY(Replicated) TObjectPtr<ANAPlayerCharacter> CarriedPlayer;
+
+	UFUNCTION() void OnRep_CarriedBy();
+	UFUNCTION(Server, Reliable) void ServerDropCarried();
+
+	virtual float GetExtraSpeedMultiplier() const override;
+	virtual void OnDownedChanged(bool bNowDowned) override;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Camera") float DefaultFieldOfView = 85.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Camera") float StandingArmLength = 340.f;
@@ -133,6 +164,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuLeftAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuRightAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuConfirmAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> AbilityAction;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
 	bool bAdminFlying = false;
@@ -204,6 +236,15 @@ private:
 	void Input_MenuLeft();
 	void Input_MenuRight();
 	void Input_MenuConfirm();
+	void Input_Ability();
+
+	// NAPlayerCharacter_Rescue.cpp
+	void UpdateRescue(float DeltaSeconds);
+	void StartCarrying(ANAPlayerCharacter* Downed);
+	void DropCarried();
+	void ApplyCarriedState();
+	void CompleteRevive();
+	float ServerTimeNow() const;
 
 	// NAPlayerCharacter_Survival.cpp
 	void UpdateGatherFocus(const FHitResult& Hit);
@@ -220,6 +261,10 @@ private:
 	bool bSliding = false;
 	float LastDodgeTime = -100.f;
 	float LastGatherTime = -100.f;
+	float LastReviveTapTime = -100.f;
+	float NextSpeedRefresh = 0.f;
+	float LastSpeedMultiplier = 1.f;
+	bool bWasCloaked = false;
 	bool bInventoryOpen = false;
 	int32 InventoryTab = 0;
 	int32 InventoryIndex = 0;

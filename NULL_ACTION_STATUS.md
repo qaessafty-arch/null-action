@@ -1,6 +1,39 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.9: Milestone 5A (inventory, gathering, crafting, base building) written, not yet built. v0.8 (Stages 1-2, 3A, 4A, 4B) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v1.0: Milestone 5B (downed & revive, carrying, ASH REBIRTH shrines, class powers) written, not yet built. v0.9 (5A) also not yet confirmed. v0.8 (Stages 1-2, 3A, 4A, 4B) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 5B: downed & revive, carrying, ASH REBIRTH and class powers (Stage 5, part 2)
+
+Status: **written, not yet compiled or tested (v1.0).**
+
+What was added (all server-authoritative; clients only ask):
+- **Downed state (players only).** At 0 health you go down instead of dying: you crawl slowly, can't shoot, aim, sprint, jump, build or use your power, and you bleed out over ~30 s. Damage while down finishes you. Soldiers stop targeting downed players so teammates get a chance; creatures do not.
+- **Revive.** Look at a downed teammate and **tap E steadily** (about once every 0.25–1.4 s, like CPR). Mashing faster does nothing; slow taps count half. About 13 good taps; progress fades if you stop. Revived players come back at 30% health and move slower for 20 s.
+- **Carry.** **Crouch + E** on a downed teammate puts them over your shoulder (you move at 60%, can't shoot). **E** puts them down. They are dropped automatically if either of you dies, you go down, or you start swimming.
+- **ASH REBIRTH.** Three Ash Shrines: *Arena Shrine* (inside the arena, south side), *Cabin Shrine* (south of the Old Cabin), *Lakeside Shrine* (Mirror Lake shore facing the arena). Use one to **attune**. Everyone starts with **1 Ash charge** (max 3). Offer an **Ember Fang** (Ash Stalker drop) at your attuned shrine for +1 charge.
+  - Die with a charge, attuned, and no rebirth in the last 5 minutes → you rise at your shrine after 3 s **with all your items**, at 60% health, Ash-touched (slower) for 120 s. The shrine flares.
+  - Otherwise you respawn normally and **everything in your inventory drops where you died** as pickups. The death screen and a system message tell you which happened and why.
+- **Classes and powers (Q).** Pick with the console command `NAClass Phantom | Hunter | Storm | Guardian` (default Hunter). Energy bar (100, +6/s) and cooldowns are on the server.
+  - **Phantom – Cloak** (50 energy, 20 s cooldown): invisible to other players for 8 s; AI only notices you within 3 m. Shooting or taking damage breaks it.
+  - **Hunter – Tracking Pulse** (35, 15 s): 10 s of on-screen markers for enemies, creatures and (uncloaked) players within 80 m, through walls.
+  - **Storm – Lightning Strike** (60, 18 s): marks where you aim (max 40 m, line of sight checked by the server); everyone sees a red **!! LIGHTNING** warning; 0.6 s later 70 damage in a 3.5 m radius (falls off with distance, never hits you).
+  - **Guardian – Restoration Field** (60, 25 s): 8 s field, heals you and players within 6 m by 8/s; revives inside it go 60% faster.
+- **HUD:** downed screen with bleed-out and revive bars, "+ DOWN 12m" markers over downed teammates, carry/recovering/Ash-touched status lines, bottom-centre power panel (`[Q] name READY / cooldown`, energy bar, `ASH 1/3 - shrine name`), cloak tint, field indicator, rebirth info on the death screen. Version string `dev build 1.0`.
+
+Honest limits: no team system yet (any player can revive or carry any other); the cloak hides the body and weapons but footsteps still make AI-audible noise; power visuals are simple (tracer bolt, light flare, HUD markers) until real effects/assets exist; carrying is a simple attach (no carry animation).
+
+### 5B test checklist
+- [ ] Builds; HUD says `dev build 1.0`; bottom centre shows `[Q] Tracking Pulse READY` and `ASH 1/3 - not attuned`
+- [ ] Walk to the **Arena Shrine** (tall dark pillar with a glowing ember), press E → "attuned" message; HUD shows the shrine name
+- [ ] `NAGive EmberFang 1` (owner) then E at the shrine → `ASH 2/3`, shrine flares
+- [ ] Get killed by a soldier with a charge → go **down** first (crawl, red screen, bleed-out bar). Let it run out → death screen says **ASH REBIRTH**, you rise at the shrine with your items, slower for 120 s, `ASH 1/3`
+- [ ] Die again within 5 minutes → items drop at your body, message says the shrine is recovering; walk back and pick them up
+- [ ] Two players (Listen Server): down one, the other taps E steadily → revive bar fills, revived at 30% health. Mashing E fast does not fill it
+- [ ] Crouch + E on a downed teammate → carried over the shoulder; E puts them down
+- [ ] `NAClass Storm`, Q at a spot → both players see the red warning, then the bolt and damage
+- [ ] `NAClass Phantom`, Q → other player can't see you; shooting reveals you; soldiers ignore you unless very close
+- [ ] `NAClass Hunter`, Q → markers on soldiers and the Ash Stalker through walls
+- [ ] `NAClass Guardian`, Q while a teammate is hurt → their health rises; reviving inside the field is faster
 
 ## Milestone 5A: inventory, gathering, crafting and base building (Stage 5, part 1)
 

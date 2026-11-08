@@ -18,6 +18,7 @@
 #include "Perception/AISense_Hearing.h"
 #include "Survival/NASurvivalComponent.h"
 #include "Inventory/NAInventoryComponent.h"
+#include "Abilities/NAAbilityComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWaterVolume.h"
@@ -48,6 +49,8 @@ ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializ
 
 	SurvivalComponent = CreateDefaultSubobject<UNASurvivalComponent>(TEXT("Survival"));
 	InventoryComponent = CreateDefaultSubobject<UNAInventoryComponent>(TEXT("Inventory"));
+	AbilityComponent = CreateDefaultSubobject<UNAAbilityComponent>(TEXT("Ability"));
+	GetHealthComponent()->SetCanBeDowned(true); // Players go down before dying; teammates can revive.
 
 	// Swimming uses the movement component's flying mode (predicted and replicated like walking).
 	GetCharacterMovement()->MaxFlySpeed = SwimSpeed;
@@ -74,12 +77,17 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 	}
 
 	UpdateSwimming();
+	UpdateRescue(DeltaSeconds);
 }
 
 void ANAPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(ANAPlayerCharacter, bAdminFlying, COND_OwnerOnly);
+	DOREPLIFETIME(ANAPlayerCharacter, ReviveProgress);
+	DOREPLIFETIME(ANAPlayerCharacter, RecoveringUntil);
+	DOREPLIFETIME(ANAPlayerCharacter, CarriedBy);
+	DOREPLIFETIME(ANAPlayerCharacter, CarriedPlayer);
 }
 
 void ANAPlayerCharacter::SetAdminFlying(bool bNewFlying)
@@ -137,7 +145,7 @@ bool ANAPlayerCharacter::IsCameraUnderwater() const
 void ANAPlayerCharacter::UpdateSwimming()
 {
 	// The server and the owning client both decide from the same position, so they agree.
-	if (!HasAuthority() && !IsLocallyControlled())
+	if ((!HasAuthority() && !IsLocallyControlled()) || CarriedBy)
 	{
 		return;
 	}
@@ -290,7 +298,7 @@ void ANAPlayerCharacter::ServerMantle_Implementation()
 
 bool ANAPlayerCharacter::CanSlide() const
 {
-	return !bSliding && !IsDead() && IsSprinting() && GetCharacterMovement()->IsMovingOnGround() && GetVelocity().Size2D() > RunSpeed;
+	return !bSliding && !IsDead() && !IsDowned() && IsSprinting() && GetCharacterMovement()->IsMovingOnGround() && GetVelocity().Size2D() > RunSpeed;
 }
 
 void ANAPlayerCharacter::StartSlide()
@@ -331,7 +339,7 @@ void ANAPlayerCharacter::ServerSlide_Implementation()
 
 bool ANAPlayerCharacter::CanDodge() const
 {
-	return !IsDead() && !bIsProne && !IsSwimming() && GetCharacterMovement()->IsMovingOnGround() &&
+	return !IsDead() && !IsDowned() && !CarriedPlayer && !bIsProne && !IsSwimming() && GetCharacterMovement()->IsMovingOnGround() &&
 		GetWorld()->GetTimeSeconds() - LastDodgeTime >= DodgeCooldownSeconds &&
 		(!SurvivalComponent || SurvivalComponent->HasStamina(DodgeStaminaCost));
 }
@@ -408,7 +416,7 @@ void ANAPlayerCharacter::UpdateInteractionFocus()
 {
 	FocusedInteractable = nullptr;
 	GatherPrompt.Reset();
-	if (IsDead())
+	if (IsDead() || IsDowned() || CarriedPlayer)
 	{
 		return;
 	}
@@ -436,7 +444,7 @@ void ANAPlayerCharacter::UpdateInteractionFocus()
 void ANAPlayerCharacter::ServerInteract_Implementation(AActor* Target)
 {
 	INAInteractable* Interactable = Cast<INAInteractable>(Target);
-	if (!Interactable || IsDead())
+	if (!Interactable || IsDead() || IsDowned() || Target == this)
 	{
 		return;
 	}
@@ -450,7 +458,7 @@ void ANAPlayerCharacter::ServerInteract_Implementation(AActor* Target)
 
 bool ANAPlayerCharacter::CanSprint() const
 {
-	return !IsAiming() && (!SurvivalComponent || SurvivalComponent->CanSprint());
+	return !IsAiming() && !IsDowned() && !CarriedPlayer && (!SurvivalComponent || SurvivalComponent->CanSprint());
 }
 
 void ANAPlayerCharacter::GetAimViewPoint(FVector& OutLocation, FRotator& OutRotation) const
@@ -521,6 +529,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	MenuLeftAction = MakeAction(TEXT("IA_MenuLeft"), EInputActionValueType::Boolean);
 	MenuRightAction = MakeAction(TEXT("IA_MenuRight"), EInputActionValueType::Boolean);
 	MenuConfirmAction = MakeAction(TEXT("IA_MenuConfirm"), EInputActionValueType::Boolean);
+	AbilityAction = MakeAction(TEXT("IA_Ability"), EInputActionValueType::Boolean);
 
 	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NullActionDefault"), RF_Transient);
 
@@ -605,6 +614,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(MenuLeftAction, EKeys::Left);
 	IMC->MapKey(MenuRightAction, EKeys::Right);
 	IMC->MapKey(MenuConfirmAction, EKeys::Enter);
+	IMC->MapKey(AbilityAction, EKeys::Q);
 
 	MappingContext = IMC;
 }
@@ -638,6 +648,7 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	if (MenuLeftAction)    { Input->BindAction(MenuLeftAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuLeft); }
 	if (MenuRightAction)   { Input->BindAction(MenuRightAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuRight); }
 	if (MenuConfirmAction) { Input->BindAction(MenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuConfirm); }
+	if (AbilityAction)     { Input->BindAction(AbilityAction, ETriggerEvent::Started, this, &ThisClass::Input_Ability); }
 	if (ScoreboardAction)
 	{
 		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
@@ -711,7 +722,7 @@ void ANAPlayerCharacter::Input_Look(const FInputActionValue& Value)
 
 void ANAPlayerCharacter::Input_JumpStarted()
 {
-	if (IsDead())
+	if (IsDead() || IsDowned() || CarriedPlayer)
 	{
 		return;
 	}
@@ -774,6 +785,10 @@ void ANAPlayerCharacter::Input_WalkToggle()
 
 void ANAPlayerCharacter::Input_Crouch()
 {
+	if (IsDowned())
+	{
+		return; // Already crawling.
+	}
 	if (IsSwimming())
 	{
 		bSwimDescend = true; // Hold C to dive.
@@ -814,6 +829,10 @@ void ANAPlayerCharacter::Input_ScoreboardCompleted()
 
 void ANAPlayerCharacter::Input_Prone()
 {
+	if (IsDowned() || CarriedPlayer)
+	{
+		return;
+	}
 	SetProne(!IsProne());
 }
 
@@ -855,6 +874,10 @@ void ANAPlayerCharacter::UpdateDesiredGait()
 
 void ANAPlayerCharacter::Input_FireStarted()
 {
+	if (IsDowned() || CarriedPlayer)
+	{
+		return;
+	}
 	if (bBuildMode)
 	{
 		if (bPlacementValid)
@@ -884,6 +907,10 @@ void ANAPlayerCharacter::Input_FireCompleted()
 
 void ANAPlayerCharacter::Input_AimStarted()
 {
+	if (IsDowned() || CarriedPlayer)
+	{
+		return;
+	}
 	if (bBuildMode)
 	{
 		StopBuilding(); // Right-click cancels building.
@@ -910,8 +937,25 @@ void ANAPlayerCharacter::Input_Reload()
 	}
 }
 
+void ANAPlayerCharacter::Input_Ability()
+{
+	if (AbilityComponent && !IsDowned() && !CarriedPlayer && !bInventoryOpen)
+	{
+		AbilityComponent->RequestActivate(); // The server checks energy, cooldown and state.
+	}
+}
+
 void ANAPlayerCharacter::Input_Interact()
 {
+	if (CarriedPlayer)
+	{
+		ServerDropCarried(); // Put the carried teammate down.
+		return;
+	}
+	if (IsDowned())
+	{
+		return;
+	}
 	if (AActor* Target = FocusedInteractable.Get())
 	{
 		ServerInteract(Target);
