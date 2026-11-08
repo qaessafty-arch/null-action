@@ -16,7 +16,10 @@ public class NullAction : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
-			"NetCore"
+			"NetCore",
+			"AIModule",
+			"NavigationSystem",
+			"GameplayTasks"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

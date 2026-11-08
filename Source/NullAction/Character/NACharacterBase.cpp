@@ -101,6 +101,7 @@ void ANACharacterBase::BeginPlay()
 	DefaultMeshRelativeLocation = GetMesh()->GetRelativeLocation();
 	DefaultMeshRelativeRotation = GetMesh()->GetRelativeRotation();
 	DefaultMeshCollisionProfile = GetMesh()->GetCollisionProfileName();
+	DefaultCapsuleVisibilityResponse = GetCapsuleComponent()->GetCollisionResponseToChannel(ECC_Visibility);
 
 	HealthComponent->OnDeathStateChanged.AddDynamic(this, &ANACharacterBase::HandleDeathStateChanged);
 	if (HasAuthority())
@@ -286,6 +287,7 @@ void ANACharacterBase::HandleDeathStateChanged(bool bNowDead)
 		// The body no longer blocks players or bullets.
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(NA_TRACE_WEAPON, ECR_Ignore);
+		Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 
 		if (bRealBody)
 		{
@@ -304,6 +306,7 @@ void ANACharacterBase::HandleDeathStateChanged(bool bNowDead)
 	{
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 		Capsule->SetCollisionResponseToChannel(NA_TRACE_WEAPON, bRealBody ? ECR_Ignore : ECR_Block);
+		Capsule->SetCollisionResponseToChannel(ECC_Visibility, DefaultCapsuleVisibilityResponse);
 		Move->SetMovementMode(MOVE_Walking);
 
 		if (MeshComp->IsSimulatingPhysics())

@@ -1,6 +1,8 @@
 #include "Core/NAHUD.h"
 
+#include "AI/NAEnemySoldier.h"
 #include "Character/NAPlayerCharacter.h"
+#include "EngineUtils.h"
 #include "Combat/NAHealthComponent.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
@@ -101,7 +103,7 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.2"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.3"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(FString::Printf(TEXT("Gait: %s%s   Speed: %.0f cm/s   %s"),
@@ -141,6 +143,36 @@ void ANAHUD::DrawHUD()
 		if (Player->WasLastHitHeadshot()) { HitText += TEXT("  HEADSHOT"); }
 		if (Player->WasLastHitKill())     { HitText += TEXT("  KILL"); }
 		DrawText(HitText, HitColor, CenterX + 22.f, CenterY - 30.f - SinceHit * 40.f, nullptr, 1.1f);
+	}
+
+	// ----- Enemy warnings (alert state is replicated from the server) -----
+	int32 Engaging = 0;
+	int32 Suspicious = 0;
+	for (TActorIterator<ANAEnemySoldier> It(GetWorld()); It; ++It)
+	{
+		if (It->IsDead() || It->GetAlertTarget() != Player)
+		{
+			continue;
+		}
+		if (It->GetAlertState() == ENAAlertState::Combat)
+		{
+			++Engaging;
+		}
+		else if (It->GetAlertState() == ENAAlertState::Suspicious)
+		{
+			++Suspicious;
+		}
+	}
+	if (Engaging > 0)
+	{
+		const FString Warning = Engaging == 1 ? TEXT("!  ENEMY ENGAGING") : FString::Printf(TEXT("!  %d ENEMIES ENGAGING"), Engaging);
+		DrawRect(FLinearColor(0.5f, 0.02f, 0.02f, 0.65f), CenterX - 130.f, 70.f, 260.f, 30.f);
+		DrawText(Warning, TextColor, CenterX - 110.f, 75.f, nullptr, 1.2f);
+	}
+	else if (Suspicious > 0)
+	{
+		DrawRect(FLinearColor(0.45f, 0.35f, 0.02f, 0.6f), CenterX - 130.f, 70.f, 260.f, 30.f);
+		DrawText(TEXT("?  YOU ARE BEING NOTICED"), TextColor, CenterX - 115.f, 75.f, nullptr, 1.1f);
 	}
 
 	// ----- Interaction prompt -----

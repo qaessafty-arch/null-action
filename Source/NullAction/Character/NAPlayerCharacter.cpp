@@ -15,6 +15,7 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Interaction/NAInteractable.h"
+#include "Perception/AISense_Hearing.h"
 #include "Survival/NASurvivalComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
@@ -54,6 +55,36 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 		UpdateCamera(DeltaSeconds);
 		UpdateInteractionFocus();
 	}
+
+	if (HasAuthority())
+	{
+		UpdateFootstepNoise();
+	}
+}
+
+void ANAPlayerCharacter::UpdateFootstepNoise()
+{
+	const float Speed = GetVelocity().Size2D();
+	if (IsDead() || Speed < 150.f || GetCharacterMovement()->IsFalling())
+	{
+		return;
+	}
+
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (Now < NextFootstepNoiseTime)
+	{
+		return;
+	}
+
+	// Sprinting is loud, running audible, walking and crouching nearly silent.
+	float Loudness = 0.5f;
+	float Range = 900.f;
+	if (IsSprinting())             { Loudness = 1.f;  Range = 1600.f; }
+	else if (bIsCrouched)          { Loudness = 0.1f; Range = 250.f; }
+	else if (Gait == ENAGait::Walk) { Loudness = 0.2f; Range = 400.f; }
+
+	NextFootstepNoiseTime = Now + 0.5f;
+	UAISense_Hearing::ReportNoiseEvent(GetWorld(), GetActorLocation(), Loudness, this, Range, FName(TEXT("Footstep")));
 }
 
 void ANAPlayerCharacter::UpdateCamera(float DeltaSeconds)

@@ -87,6 +87,7 @@ private:
 	void UpdateDesiredGait();
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateInteractionFocus();
+	void UpdateFootstepNoise();
 
 	void Input_Move(const FInputActionValue& Value);
 	void Input_Look(const FInputActionValue& Value);
@@ -110,6 +111,7 @@ private:
 	void Input_WeaponSlot4();
 
 	TWeakObjectPtr<AActor> FocusedInteractable;
+	float NextFootstepNoiseTime = 0.f;
 	bool bSprintHeld = false;
 	bool bWalkToggled = false;
 };

@@ -11,6 +11,7 @@
 #include "GameFramework/DamageType.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Perception/AISense_Hearing.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Weapons/NATracer.h"
@@ -279,6 +280,9 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 	}
 
 	MulticastShotEffects(GetMuzzleLocation(), Ends);
+
+	// Enemies within hearing range notice gunfire.
+	UAISense_Hearing::ReportNoiseEvent(World, Eye, 1.f, Character, 0.f, FName(TEXT("Gunshot")));
 
 	if (TotalDamage > 0.f)
 	{

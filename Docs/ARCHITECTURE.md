@@ -23,6 +23,7 @@ Source/
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component
     Interaction/ INAInteractable interface, weapon and supply pickups
+    AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
 Docs/                   Architecture and decisions
 NULL_ACTION_STATUS.md   Live progress report
 ```

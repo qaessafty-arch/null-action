@@ -26,6 +26,9 @@ public:
 	virtual bool CanInteract(const ANACharacterBase* User) const override { return bAvailable; }
 	virtual void Interact(ANACharacterBase* User) override;
 
+	/** Seconds until it reappears after being taken; 0 = never. Set before FinishSpawning. */
+	void SetRespawnSeconds(float Seconds) { RespawnSeconds = Seconds; }
+
 protected:
 	virtual void BeginPlay() override;
 

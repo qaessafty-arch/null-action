@@ -92,6 +92,17 @@ ANATestArena::ANATestArena()
 	}
 	AddBox(TEXT("CameraWall"), FVector(-1500.f, 0.f, 0.f), FVector(50.f, 1600.f, 500.f), FRotator::ZeroRotator, 1);
 
+	// Combat yard (X 2000..3700, Y -3700..-1300): low cover (crouch behind, stand to peek), crates, a tall wall.
+	AddBox(TEXT("Yard_Barrier"),   FVector(2700.f, -1450.f, 0.f), FVector(400.f, 40.f, 100.f), FRotator::ZeroRotator, 0);
+	AddBox(TEXT("Yard_CoverA"),    FVector(2350.f, -1900.f, 0.f), FVector(40.f, 500.f, 130.f), FRotator::ZeroRotator, 0);
+	AddBox(TEXT("Yard_CoverB"),    FVector(2900.f, -2600.f, 0.f), FVector(500.f, 40.f, 130.f), FRotator::ZeroRotator, 0);
+	AddBox(TEXT("Yard_Crate1"),    FVector(2650.f, -2300.f, 0.f), FVector(120.f, 120.f, 110.f), FRotator(0.f, 15.f, 0.f), 3);
+	AddBox(TEXT("Yard_Crate2"),    FVector(3300.f, -1850.f, 0.f), FVector(120.f, 120.f, 110.f), FRotator::ZeroRotator, 3);
+	AddBox(TEXT("Yard_Crate3"),    FVector(3100.f, -3100.f, 0.f), FVector(150.f, 150.f, 120.f), FRotator(0.f, -20.f, 0.f), 3);
+	AddBox(TEXT("Yard_Crate4"),    FVector(2350.f, -3000.f, 0.f), FVector(120.f, 240.f, 110.f), FRotator::ZeroRotator, 3);
+	AddBox(TEXT("Yard_TallWall"),  FVector(3550.f, -2500.f, 0.f), FVector(40.f, 900.f, 300.f), FRotator::ZeroRotator, 1);
+	AddBox(TEXT("Yard_Container"), FVector(2650.f, -3450.f, 0.f), FVector(600.f, 240.f, 260.f), FRotator::ZeroRotator, 2);
+
 	// Environment lighting so an empty level is lit. Removed in BeginPlay if the level has its own sun.
 	Sun = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("Sun"));
 	Sun->SetupAttachment(Root);

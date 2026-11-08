@@ -1,6 +1,67 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — Milestone 2A (combat foundation) written; Milestone 1 verified on owner's PC_
+_Last updated: 2026-11-08 — Milestone 2B (enemy AI) written on top of 2A; neither compiled yet. Milestone 1 verified on owner's PC._
+
+## Milestone 2B: enemy soldier AI (Stage 2, part 2)
+
+Status: **written, not yet compiled or tested.** Build and test together with 2A.
+
+Architecture: Behavior Tree / State Tree assets are editor-made `.uasset` files that can't be authored from the cloud workspace, so the soldier's brain is a C++ state machine (`AI/NAEnemyAIController`) on Unreal's **AI Perception** (sight + hearing). It runs only on the server; clients see the result through normal character replication.
+
+| Behaviour | How it works |
+|---|---|
+| Patrol | Walks a route, pausing and looking around at each point. |
+| Detect players | Sight cone (70° each side). An awareness meter fills faster up close and slower if you crouch; reaction time depends on difficulty. |
+| Hear gunshots / footsteps | Every shot is a loud noise; sprinting is loud, running audible, walking/crouching nearly silent. |
+| Investigate | Goes to a noise or half-seen movement, looks around, then returns to patrol. |
+| Chase + attack | Strafes and keeps a preferred range, aims with difficulty-based error, fires in bursts, sometimes at your head. |
+| Cover | Finds spots where it can't be seen crouched but can peek standing; crouches there to reload, then pops back up. |
+| Reload | When the magazine empties; in cover if it uses cover. |
+| Retreat | Hard/Expert: falls back to far cover once when badly hurt, regroups, returns. |
+| Search | Lost sight for 3 s: checks around your last known position, then gives up. |
+| Return to patrol | After searching or investigating. |
+| Reacts to being shot | Immediately fights back against the player who shot it. |
+| Calls allies | Hard/Expert: nearby soldiers are told where you are. |
+| Respawn | A replacement soldier arrives at the same post 25 s after a death; the dead soldier drops an ammo box. |
+
+**Difficulty changes decisions, not health:**
+
+| | Easy | Normal | Hard | Expert |
+|---|---|---|---|---|
+| Reaction | 1.6 s | 1.0 s | 0.6 s | 0.35 s |
+| Sight / hearing | 25 / 20 m | 35 / 30 m | 45 / 38 m | 55 / 45 m |
+| Aim error | 6° | 3.5° | 2° | 1° |
+| Head-shot bursts | 0% | 10% | 25% | 45% |
+| Uses cover | rarely | often | mostly | almost always |
+| Investigates suspicion | no | yes | yes | yes |
+| Retreats when hurt | no | no | <35% | <40% |
+| Calls allies | no | no | yes | yes |
+| Flanks | no | no | no | yes |
+
+Set it in `Config/DefaultGame.ini` (`EnemyDifficulty=`) or, as the host, open the console (`~`) and type `NADifficulty Hard`. Connected clients are refused.
+
+HUD warnings: **"! ENEMY ENGAGING"** (red) when a soldier is fighting you, **"? YOU ARE BEING NOTICED"** (yellow) when one is suspicious of you.
+
+### One-time setup for best AI movement: Nav Mesh Bounds Volume
+Soldiers walk straight lines without a navigation mesh, and can get stuck on cover. To give them real pathfinding:
+1. Open `L_TestArena`. Press **Place Actors** (the **+** cube icon in the toolbar) and search **Nav Mesh Bounds Volume**. Drag it into the level.
+2. In **Details**, set its **Location** to `0, 0, 0` and **Scale** to `45, 45, 5`.
+3. **Ctrl+S** to save. Press **P** in the viewport to preview: green = walkable. It appears once the arena exists, which is in Play, because navigation rebuilds at runtime.
+
+### 2B test checklist
+
+The combat yard is to your **right** from spawn, about 30 m away, with crates, low walls, a container and a tall red wall.
+- [ ] Three dark-red soldiers with red visors patrol the yard
+- [ ] Walking in crouched, you can get closer before they notice than when sprinting
+- [ ] Firing a shot nearby makes them come and investigate
+- [ ] Once they see you: HUD shows ENEMY ENGAGING, they shoot in bursts and strafe
+- [ ] They duck behind cover to reload, then pop up again
+- [ ] Break line of sight: they search your last position, then return to patrol
+- [ ] Shooting an unaware soldier makes it fight back immediately
+- [ ] Killed soldiers drop ammo; a replacement appears ~25 s later
+- [ ] `NADifficulty Easy` vs `NADifficulty Expert`: Expert reacts much faster, aims better, uses cover, retreats, flanks
+- [ ] Multiplayer: soldiers react to both players; both see their movement and shots
+
 
 ## Milestone 2A: combat foundation (Stage 2, part 1)
 

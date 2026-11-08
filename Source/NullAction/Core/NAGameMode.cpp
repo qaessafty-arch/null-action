@@ -4,7 +4,10 @@
 #include "Character/NAPlayerCharacter.h"
 #include "Core/NAHUD.h"
 #include "EngineUtils.h"
+#include "AI/NAEnemyAIController.h"
+#include "AI/NAEnemySoldier.h"
 #include "Combat/NATrainingDummy.h"
+#include "Core/NAPlayerController.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "Interaction/NAPickup.h"
@@ -16,6 +19,7 @@ ANAGameMode::ANAGameMode()
 {
 	DefaultPawnClass = ANAPlayerCharacter::StaticClass();
 	HUDClass = ANAHUD::StaticClass();
+	PlayerControllerClass = ANAPlayerController::StaticClass();
 	TestArenaClass = ANATestArena::StaticClass();
 }
 
@@ -177,6 +181,59 @@ void ANAGameMode::SpawnArenaContent()
 	{
 		World->SpawnActor<ANATrainingDummy>(ANATrainingDummy::StaticClass(), At(Spot, -90.f), Params);
 	}
+
+	// Combat yard (to your right from spawn, ~30 m away): three soldiers on overlapping patrol routes.
+	auto Route = [&ArenaTransform](std::initializer_list<FVector> Points)
+	{
+		TArray<FVector> WorldPoints;
+		for (const FVector& Point : Points)
+		{
+			WorldPoints.Add(ArenaTransform.TransformPosition(Point));
+		}
+		return WorldPoints;
+	};
+	EnemyPosts.Reset();
+	EnemyPosts.Add({ At(FVector(2500.f, -2000.f, 100.f), 180.f), Route({ FVector(2500.f, -2000.f, 100.f), FVector(3300.f, -2000.f, 100.f), FVector(3300.f, -1600.f, 100.f) }) });
+	EnemyPosts.Add({ At(FVector(3300.f, -3200.f, 100.f), 135.f), Route({ FVector(3300.f, -3200.f, 100.f), FVector(2600.f, -3200.f, 100.f), FVector(2800.f, -2700.f, 100.f) }) });
+	EnemyPosts.Add({ At(FVector(2200.f, -2700.f, 100.f), 90.f),  Route({ FVector(2200.f, -2700.f, 100.f), FVector(2200.f, -3400.f, 100.f), FVector(3200.f, -3550.f, 100.f), FVector(3000.f, -2300.f, 100.f) }) });
+
+	for (int32 Index = 0; Index < EnemyPosts.Num(); ++Index)
+	{
+		SpawnEnemy(Index);
+	}
+}
+
+void ANAGameMode::SpawnEnemy(int32 PostIndex)
+{
+	UWorld* World = GetWorld();
+	if (!World || !EnemyPosts.IsValidIndex(PostIndex))
+	{
+		return;
+	}
+
+	const FEnemyPost& Post = EnemyPosts[PostIndex];
+	ANAEnemySoldier* Soldier = World->SpawnActorDeferred<ANAEnemySoldier>(ANAEnemySoldier::StaticClass(), Post.SpawnTransform,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (Soldier)
+	{
+		Soldier->PatrolPoints = Post.Patrol;
+		Soldier->Difficulty = EnemyDifficulty;
+		Soldier->FinishSpawning(Post.SpawnTransform);
+		EnemyPostByActor.Add(Soldier, PostIndex);
+	}
+}
+
+void ANAGameMode::SetEnemyDifficulty(ENADifficulty NewDifficulty)
+{
+	EnemyDifficulty = NewDifficulty;
+	for (TActorIterator<ANAEnemySoldier> It(GetWorld()); It; ++It)
+	{
+		if (ANAEnemyAIController* Brain = Cast<ANAEnemyAIController>(It->GetController()))
+		{
+			Brain->SetDifficulty(NewDifficulty);
+		}
+	}
+	UE_LOG(LogNullAction, Log, TEXT("Enemy difficulty set to %s"), NAAI::DifficultyName(NewDifficulty));
 }
 
 void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Killer)
@@ -186,10 +243,23 @@ void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Kille
 		return;
 	}
 
+	// Enemy soldiers: a replacement arrives at the same post after a while.
+	if (ANAEnemySoldier* Soldier = Cast<ANAEnemySoldier>(Victim))
+	{
+		Victim->SetLifeSpan(CorpseLifeSeconds);
+		if (const int32* PostIndex = EnemyPostByActor.Find(Soldier))
+		{
+			FTimerHandle Handle;
+			GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateUObject(this, &ANAGameMode::SpawnEnemy, *PostIndex), EnemyRespawnSeconds, false);
+			EnemyPostByActor.Remove(Soldier);
+		}
+		return;
+	}
+
 	AController* VictimController = Victim->GetController();
 	if (!VictimController || !VictimController->IsPlayerController())
 	{
-		return; // AI and dummies manage themselves.
+		return; // Dummies manage themselves.
 	}
 
 	APlayerController* PlayerController = Cast<APlayerController>(VictimController);

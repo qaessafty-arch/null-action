@@ -193,6 +193,7 @@ private:
 	FVector DefaultMeshRelativeLocation = FVector::ZeroVector;
 	FRotator DefaultMeshRelativeRotation = FRotator::ZeroRotator;
 	FName DefaultMeshCollisionProfile = NAME_None;
+	TEnumAsByte<ECollisionResponse> DefaultCapsuleVisibilityResponse = ECR_Block;
 
 	float LastHitConfirmTime = -100.f;
 	float LastHitDamage = 0.f;
