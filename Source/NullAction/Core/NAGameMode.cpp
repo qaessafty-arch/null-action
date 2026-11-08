@@ -5,7 +5,6 @@
 #include "Core/NAHUD.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
-#include "GameFramework/PlayerStartPIE.h"
 #include "World/NATestArena.h"
 
 ANAGameMode::ANAGameMode()
@@ -57,9 +56,11 @@ void ANAGameMode::EnsureTestArenaIfLevelIsEmpty()
 
 	for (TActorIterator<APlayerStart> It(World); It; ++It)
 	{
-		// The editor adds a temporary APlayerStartPIE when you press Play in a level with no
-		// spawn points. That doesn't make it a real level, so ignore it.
-		if (!It->IsA<APlayerStartPIE>())
+		// The editor adds a temporary "PlayerStartPIE" when you press Play in a level with no
+		// spawn points. That doesn't make it a real level, so ignore it. Matched by class name
+		// because that class's header isn't public in every engine version.
+		static const FName PIEStartClassName(TEXT("PlayerStartPIE"));
+		if (It->GetClass()->GetFName() != PIEStartClassName)
 		{
 			return; // A real level with its own spawn points: leave it alone.
 		}
