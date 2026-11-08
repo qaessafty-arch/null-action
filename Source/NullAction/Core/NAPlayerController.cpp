@@ -74,7 +74,7 @@ void ANAPlayerController::NAHeal()                                  { SendAdmin(
 void ANAPlayerController::NATeleport(float X, float Y, float Z)     { SendAdmin(ENAAdminCommand::Teleport, FString(), FString(), FVector(X, Y, Z)); }
 void ANAPlayerController::NAGoto(const FString& PlayerName)         { SendAdmin(ENAAdminCommand::GoTo, PlayerName); }
 void ANAPlayerController::NABring(const FString& PlayerName)        { SendAdmin(ENAAdminCommand::Bring, PlayerName); }
-void ANAPlayerController::NAGive(const FString& Weapon)             { SendAdmin(ENAAdminCommand::Give, Weapon); }
+void ANAPlayerController::NAGive(const FString& What, const FString& Count) { SendAdmin(ENAAdminCommand::Give, What, Count); }
 void ANAPlayerController::NASpawn(const FString& What)              { SendAdmin(ENAAdminCommand::Spawn, What); }
 void ANAPlayerController::NADifficulty(const FString& Level)        { SendAdmin(ENAAdminCommand::Difficulty, Level); }
 void ANAPlayerController::NAKick(const FString& PlayerName)         { SendAdmin(ENAAdminCommand::Kick, PlayerName); }

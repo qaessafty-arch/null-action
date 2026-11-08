@@ -17,6 +17,8 @@
 #include "Weapons/NAWeapon.h"
 #include "World/NAWorldEnvironment.h"
 #include "World/NATerrainManager.h"
+#include "Inventory/NAInventoryComponent.h"
+#include "Inventory/NAItems.h"
 
 namespace
 {
@@ -146,6 +148,84 @@ void ANAHUD::DrawScoreboard(float ScreenW, float ScreenH)
 	}
 }
 
+void ANAHUD::DrawInventory(ANAPlayerCharacter* Player, float ScreenW, float ScreenH)
+{
+	const UNAInventoryComponent* Inventory = Player ? Player->GetInventoryComponent() : nullptr;
+	if (!Inventory)
+	{
+		return;
+	}
+
+	const float Width = 620.f;
+	const float Height = 430.f;
+	const float X = (ScreenW - Width) * 0.5f;
+	const float Y = (ScreenH - Height) * 0.5f;
+	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.88f), X, Y, Width, Height);
+	DrawRect(Accent, X, Y, Width, 3.f);
+
+	const bool bItemsTab = Player->GetInventoryTab() == 0;
+	DrawText(TEXT("INVENTORY"), bItemsTab ? Accent : FLinearColor(0.5f, 0.5f, 0.5f), X + 20.f, Y + 14.f, nullptr, 1.2f);
+	DrawText(TEXT("CRAFTING"), !bItemsTab ? Accent : FLinearColor(0.5f, 0.5f, 0.5f), X + 180.f, Y + 14.f, nullptr, 1.2f);
+	DrawText(TEXT("Left/Right: tab   Up/Down: select   Enter: use / craft / build   I: close"), FLinearColor(0.6f, 0.6f, 0.6f),
+		X + 20.f, Y + Height - 26.f, nullptr, 0.85f);
+
+	float RowY = Y + 52.f;
+	const int32 Selected = Player->GetInventoryIndex();
+
+	if (bItemsTab)
+	{
+		const TArray<FNAItemStack>& Stacks = Inventory->GetItems();
+		if (Stacks.Num() == 0)
+		{
+			DrawText(TEXT("Empty. Chop trees, mine rocks, pick herbs and berries, salvage scrap, hunt."), TextColor, X + 20.f, RowY, nullptr, 0.95f);
+		}
+		for (int32 Index = 0; Index < Stacks.Num() && Index < 13; ++Index)
+		{
+			const FNAItemDef* Def = NAItems::Find(Stacks[Index].ItemId);
+			const bool bSelected = Index == Selected;
+			if (bSelected)
+			{
+				DrawRect(FLinearColor(0.3f, 0.06f, 0.04f, 0.8f), X + 12.f, RowY - 2.f, Width - 24.f, 24.f);
+			}
+			DrawRect(Def ? Def->Color : FLinearColor::White, X + 20.f, RowY + 3.f, 14.f, 14.f);
+			DrawText(FString::Printf(TEXT("%s  x%d"), Def ? *Def->DisplayName : *Stacks[Index].ItemId.ToString(), Stacks[Index].Count),
+				bSelected ? Accent : TextColor, X + 44.f, RowY, nullptr, 1.f);
+			if (bSelected && Def)
+			{
+				DrawText(Def->Description, FLinearColor(0.75f, 0.75f, 0.75f), X + 280.f, RowY + 2.f, nullptr, 0.85f);
+			}
+			RowY += 26.f;
+		}
+		return;
+	}
+
+	const TArray<FNARecipe>& Recipes = NAItems::Recipes();
+	const bool bNearFire = Inventory->IsNearCampfire();
+	for (int32 Index = 0; Index < Recipes.Num(); ++Index)
+	{
+		const FNARecipe& Recipe = Recipes[Index];
+		const bool bSelected = Index == Selected;
+		const bool bCanCraft = Inventory->CanCraft(Recipe);
+		if (bSelected)
+		{
+			DrawRect(FLinearColor(0.3f, 0.06f, 0.04f, 0.8f), X + 12.f, RowY - 2.f, Width - 24.f, 24.f);
+		}
+		FString Needs;
+		for (const FNAIngredient& Input : Recipe.Inputs)
+		{
+			Needs += FString::Printf(TEXT("%s%d %s (%d)"), Needs.IsEmpty() ? TEXT("") : TEXT(", "), Input.Count,
+				*NAItems::NameOf(Input.Item), Inventory->CountOf(Input.Item));
+		}
+		if (Recipe.bNeedsCampfire)
+		{
+			Needs += bNearFire ? TEXT("  [campfire OK]") : TEXT("  [needs campfire]");
+		}
+		DrawText(NAItems::NameOf(Recipe.Output), bCanCraft ? FLinearColor(0.5f, 1.f, 0.5f) : FLinearColor(0.6f, 0.6f, 0.6f), X + 20.f, RowY, nullptr, 1.f);
+		DrawText(Needs, bSelected ? TextColor : FLinearColor(0.6f, 0.6f, 0.6f), X + 200.f, RowY + 2.f, nullptr, 0.85f);
+		RowY += 26.f;
+	}
+}
+
 void ANAHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -234,10 +314,11 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.8"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.9"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
+		Line(TEXT("I inventory & crafting   E gather (trees, rocks, herbs, berries, scrap)"), TextColor);
 		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive NAWeather NATime ...)"), TextColor);
 		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)
 		{
@@ -343,12 +424,35 @@ void ANAHUD::DrawHUD()
 		DrawText(TEXT("?  YOU ARE BEING NOTICED"), TextColor, CenterX - 115.f, 75.f, nullptr, 1.1f);
 	}
 
-	// ----- Interaction prompt -----
+	// ----- Interaction / gathering prompt -----
+	FString Prompt;
 	if (const INAInteractable* Interactable = Cast<INAInteractable>(Player->GetFocusedInteractable()))
 	{
-		const FString Prompt = FString::Printf(TEXT("[E]  %s"), *Interactable->GetInteractionPrompt(Player).ToString());
-		DrawRect(Dim, CenterX - 120.f, CenterY + 60.f, 240.f, 26.f);
-		DrawText(Prompt, TextColor, CenterX - 110.f, CenterY + 64.f, nullptr, 1.f);
+		Prompt = FString::Printf(TEXT("[E]  %s"), *Interactable->GetInteractionPrompt(Player).ToString());
+	}
+	else if (!Player->GetGatherPrompt().IsEmpty())
+	{
+		Prompt = FString::Printf(TEXT("[E]  %s"), *Player->GetGatherPrompt());
+	}
+	if (!Prompt.IsEmpty())
+	{
+		DrawRect(Dim, CenterX - 140.f, CenterY + 60.f, 280.f, 26.f);
+		DrawText(Prompt, TextColor, CenterX - 130.f, CenterY + 64.f, nullptr, 1.f);
+	}
+
+	// ----- Build mode -----
+	if (Player->IsBuilding())
+	{
+		const FString BuildText = FString::Printf(TEXT("BUILDING: %s   LMB place   R rotate   RMB cancel%s"),
+			*NAItems::NameOf(Player->GetBuildItem()), Player->IsPlacementValid() ? TEXT("") : TEXT("   (can't place here)"));
+		DrawRect(Dim, CenterX - 260.f, CenterY + 100.f, 520.f, 26.f);
+		DrawText(BuildText, Player->IsPlacementValid() ? FLinearColor(0.5f, 1.f, 0.5f) : Accent, CenterX - 250.f, CenterY + 104.f, nullptr, 0.95f);
+	}
+
+	// ----- Inventory / crafting panel -----
+	if (Player->IsInventoryOpen())
+	{
+		DrawInventory(Player, ScreenW, ScreenH);
 	}
 
 	// ----- Vitals (bottom-left) -----

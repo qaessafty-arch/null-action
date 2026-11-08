@@ -73,7 +73,7 @@ public:
 	UFUNCTION(Exec) void NATeleport(float X, float Y, float Z);
 	UFUNCTION(Exec) void NAGoto(const FString& PlayerName);
 	UFUNCTION(Exec) void NABring(const FString& PlayerName);
-	UFUNCTION(Exec) void NAGive(const FString& Weapon);
+	UFUNCTION(Exec) void NAGive(const FString& What, const FString& Count = TEXT(""));
 	UFUNCTION(Exec) void NASpawn(const FString& What);
 	UFUNCTION(Exec) void NADifficulty(const FString& Level);
 	UFUNCTION(Exec) void NAKick(const FString& PlayerName);

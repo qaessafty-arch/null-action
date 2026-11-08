@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "World/NAWorldEnvironment.h"
+#include "Building/NABuildPiece.h"
 
 UNASurvivalComponent::UNASurvivalComponent()
 {
@@ -101,6 +102,11 @@ void UNASurvivalComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	if (Character->IsInWater())
 	{
 		BodyTemperature = FMath::Max(30.f, BodyTemperature - WaterCoolingPerSecond * DeltaTime);
+	}
+	else if (ANABuildPiece::FindCampfireNear(GetWorld(), Character->GetActorLocation(), 450.f))
+	{
+		// Sitting by a campfire warms you quickly, whatever the weather.
+		BodyTemperature = FMath::Min(NormalTemperature, BodyTemperature + 0.25f * DeltaTime);
 	}
 	else if (Ambient < 15.f)
 	{

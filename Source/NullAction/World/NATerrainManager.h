@@ -57,6 +57,9 @@ public:
 
 	int32 GetLoadedChunkCount() const { return Chunks.Num(); }
 
+	/** Server: harvest the tree or boulder at Location. Returns false if it's depleted (regrows later). */
+	bool TryHarvest(const FVector& Location);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -88,4 +91,11 @@ private:
 	void DestroyChunk(FNATerrainChunk& Chunk);
 	UInstancedStaticMeshComponent* MakeInstances(UStaticMesh* Shape, UMaterialInterface* Material, bool bCollision);
 	void GatherViewpoints(TArray<TPair<FVector, int32>>& OutViewpoints) const;
+
+	struct FHarvestState
+	{
+		int32 HitsLeft = 5;
+		float RegrowTime = 0.f;
+	};
+	TMap<FIntPoint, FHarvestState> HarvestStates;
 };

@@ -22,9 +22,11 @@ Source/
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component
-    Interaction/ INAInteractable interface, weapon/supply pickups, doors, loot crates, readable notes
+    Interaction/ INAInteractable interface, weapon/supply/item pickups, resource nodes, doors, loot crates, readable notes
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
     Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
+    Inventory/  Item/recipe registry (NAItems), replicated inventory component with crafting
+    Building/   Player-built pieces (foundation, wall, doorway+door, campfire) with ownership and health
 Docs/                   Architecture and decisions
 NULL_ACTION_STATUS.md   Live progress report
 ```

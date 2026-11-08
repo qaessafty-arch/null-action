@@ -19,6 +19,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Interaction/NAResourceNode.h"
+#include "Inventory/NAItems.h"
 
 namespace NACreatureBody
 {
@@ -289,6 +291,14 @@ void ANACreature::OnRep_BiteCount()
 
 void ANACreature::HandleKilled(AActor* Victim, AController* Killer)
 {
+	// Hunting rewards: hide, meat and a rare fang.
+	ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::AshHide(), 2);
+	ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::RawMeat(), 3);
+	if (FMath::FRand() < 0.6f)
+	{
+		ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::EmberFang(), 1);
+	}
+
 	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
 	{
 		GameMode->OnCreatureKilled(this, Killer);

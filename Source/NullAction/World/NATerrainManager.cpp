@@ -393,6 +393,8 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 	const bool bVisuals = GetNetMode() != NM_DedicatedServer;
 	Chunk.Trunks = MakeInstances(CylinderShape, BarkMaterial, true);
 	Chunk.Rocks = MakeInstances(CubeShape, StoneMaterial, true);
+	Chunk.Trunks->ComponentTags.Add(TEXT("NA.Tree"));  // Gatherable: wood.
+	Chunk.Rocks->ComponentTags.Add(TEXT("NA.Rock"));   // Gatherable: stone.
 	if (bVisuals)
 	{
 		Chunk.Foliage = MakeInstances(ConeShape, NeedleMaterial, false);
@@ -444,6 +446,26 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 			}
 		}
 	}
+}
+
+bool ANATerrainManager::TryHarvest(const FVector& Location)
+{
+	const float Now = GetWorld()->GetTimeSeconds();
+	const FIntPoint Cell(FMath::RoundToInt(Location.X / 200.f), FMath::RoundToInt(Location.Y / 200.f));
+	FHarvestState& State = HarvestStates.FindOrAdd(Cell);
+	if (State.HitsLeft <= 0)
+	{
+		if (Now < State.RegrowTime)
+		{
+			return false;
+		}
+		State.HitsLeft = 5;
+	}
+	if (--State.HitsLeft <= 0)
+	{
+		State.RegrowTime = Now + 180.f;
+	}
+	return true;
 }
 
 void ANATerrainManager::DestroyChunk(FNATerrainChunk& Chunk)

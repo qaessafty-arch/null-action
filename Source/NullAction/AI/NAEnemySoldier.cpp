@@ -7,6 +7,8 @@
 #include "GameFramework/Controller.h"
 #include "Engine/World.h"
 #include "Interaction/NAPickup.h"
+#include "Interaction/NAResourceNode.h"
+#include "Inventory/NAItems.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
@@ -93,6 +95,7 @@ void ANAEnemySoldier::OnKilled(AController* Killer)
 			Drop->SetLifeSpan(45.f);
 			Drop->FinishSpawning(DropTransform);
 		}
+		ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::Scrap(), FMath::RandRange(1, 3));
 	}
 
 	Super::OnKilled(Killer);

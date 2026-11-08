@@ -1,6 +1,35 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.8 (Stages 1-2, 3A, 4A, 4B) compiles and runs on owner's PC. Next: 5A inventory, gathering, crafting, building. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v0.9: Milestone 5A (inventory, gathering, crafting, base building) written, not yet built. v0.8 (Stages 1-2, 3A, 4A, 4B) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 5A: inventory, gathering, crafting and base building (Stage 5, part 1)
+
+Status: **written, not yet compiled or tested (v0.9).**
+
+| Feature | How it works |
+|---|---|
+| Inventory | 24 slots, stacking; the server owns it and replicates it only to you. **I** opens the panel (Left/Right tabs, Up/Down select, Enter use/craft/build). |
+| Items | Wood, Stone, Ashroot Herb, Berries, Scrap Metal, Raw Meat, Ash Hide, Ember Fang; Bandage, Cooked Meat, Ammo Pack, Hide Armor, Ember Tonic; Wood Foundation, Wall, Doorway, Campfire. All defined in one table (`Inventory/NAItems.cpp`). |
+| Gathering | **E** on world trees = wood, boulders = stone (+ chance of scrap); herb bushes, berry bushes and scrap piles near the cabin, arena and combat yard (regrow after 90 s). Trees/rocks give 5 harvests then rest 3 min. The server checks a real tree or rock is there, plus range and swing rate. |
+| Hunting rewards | The Ash Stalker drops Ash Hide ×2, Raw Meat ×3 and (60%) an Ember Fang; soldiers drop scrap. |
+| Crafting | 9 recipes. Cooked Meat and Ember Tonic need a campfire nearby. The server checks the ingredients, so items can't be duplicated. |
+| Base building | Use a placeable from the inventory → green/red preview. **LMB** place, **R** rotate, **RMB** cancel. Foundations snap to a 3 m grid; walls and doorways snap to foundation edges; doorways come with a working door. The server re-validates the spot (range, slope, no one inside, no duplicates). |
+| Ownership | Pieces remember their builder; only the builder can demolish (refunds half). Pieces have 400 health and can be shot down. |
+| Campfire | Flickering light; warms you fast (beats the cold); counts as a cooking station. |
+| Owner | `NAGive Wood 50`, `NAGive Campfire 3`, etc. for testing. |
+
+Honest limits: inventory, buildings and world changes aren't saved to disk between server restarts yet (world persistence is a later milestone). No storage boxes yet. UI is the dev HUD; the polished UMG inventory with drag & drop comes in Stage 6.
+
+### 5A test checklist
+- [ ] HUD says `dev build 0.9`
+- [ ] Outside the arena, **E** on a tree → "+2 Wood"; on a boulder → "+2 Stone"
+- [ ] Herb bush, berry bush, scrap pile give items and then look picked-over; they regrow
+- [ ] **I**: inventory lists items; Right arrow → crafting list shows what you can make (green)
+- [ ] Craft a Campfire (4 wood, 3 stone), use it from Items → place it; you warm up beside it
+- [ ] Near the campfire, kill the Ash Stalker, take its meat, craft Cooked Meat, eat it (food goes up)
+- [ ] Craft Wood Foundations and Walls; build a small hut; add a Doorway (door opens with E)
+- [ ] A second player can't demolish your pieces; you can (refund)
+- [ ] Shoot a wall enough and it breaks
 
 ## Milestone 4B: streaming open world and the Old Cabin (Stage 4, part 2)
 

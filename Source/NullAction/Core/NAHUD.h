@@ -23,6 +23,7 @@ private:
 	void DrawChat(float ScreenH);
 	void DrawKillFeed(float ScreenW);
 	void DrawScoreboard(float ScreenW, float ScreenH);
+	void DrawInventory(class ANAPlayerCharacter* Player, float ScreenW, float ScreenH);
 
 	bool bShowScoreboard = false;
 

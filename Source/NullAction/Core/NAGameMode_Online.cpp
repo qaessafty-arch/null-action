@@ -22,6 +22,8 @@
 #include "Misc/Paths.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWorldEnvironment.h"
+#include "Inventory/NAInventoryComponent.h"
+#include "Inventory/NAItems.h"
 
 namespace NAOnline
 {
@@ -481,7 +483,13 @@ void ANAGameMode::HandleAdminCommand(ANAPlayerController* Caller, ENAAdminComman
 		else if (Arg1.Equals(TEXT("shotgun"), ESearchCase::IgnoreCase)) { WeaponClass = ANAWeapon_Shotgun::StaticClass(); }
 		else if (Arg1.Equals(TEXT("sniper"), ESearchCase::IgnoreCase))  { WeaponClass = ANAWeapon_SniperRifle::StaticClass(); }
 		if (Body && WeaponClass) { Body->GiveWeapon(WeaponClass, true); }
-		else { SystemMessage(Caller, TEXT("Usage: NAGive pistol | rifle | shotgun | sniper")); }
+		else if (Body && Body->GetInventoryComponent() && NAItems::Find(FName(*Arg1)))
+		{
+			// Items too: NAGive Wood 50
+			const int32 Count = Arg2.IsEmpty() ? 10 : FMath::Clamp(FCString::Atoi(*Arg2), 1, 999);
+			Body->GetInventoryComponent()->AddItem(FName(*Arg1), Count);
+		}
+		else { SystemMessage(Caller, TEXT("Usage: NAGive pistol|rifle|shotgun|sniper  or  NAGive <ItemId> [count], e.g. NAGive Wood 50")); }
 		break;
 	}
 

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Character/NACharacterBase.h"
+#include "Building/NABuildPiece.h"
 #include "NAPlayerCharacter.generated.h"
 
 class USpringArmComponent;
@@ -9,6 +10,9 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UNASurvivalComponent;
+class UNAInventoryComponent;
+class UStaticMeshComponent;
+
 struct FInputActionValue;
 
 /**
@@ -50,6 +54,19 @@ public:
 	USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	UNASurvivalComponent* GetSurvivalComponent() const { return SurvivalComponent; }
+	UNAInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	// ----- Inventory menu (local UI state, read by the HUD) -----
+	bool IsInventoryOpen() const { return bInventoryOpen; }
+	int32 GetInventoryTab() const { return InventoryTab; }       // 0 = items, 1 = crafting
+	int32 GetInventoryIndex() const { return InventoryIndex; }
+
+	// ----- Gathering / building (local) -----
+	/** Non-empty when looking at a tree or boulder you can harvest. */
+	FString GetGatherPrompt() const { return GatherPrompt; }
+	bool IsBuilding() const { return bBuildMode; }
+	FName GetBuildItem() const { return BuildItem; }
+	bool IsPlacementValid() const { return bPlacementValid; }
 
 	/** Interactable the player is currently looking at (local only), or null. */
 	AActor* GetFocusedInteractable() const { return FocusedInteractable.Get(); }
@@ -66,6 +83,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NullAction|Survival")
 	TObjectPtr<UNASurvivalComponent> SurvivalComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NullAction|Inventory")
+	TObjectPtr<UNAInventoryComponent> InventoryComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> BuildPreview;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Camera") float DefaultFieldOfView = 85.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Camera") float StandingArmLength = 340.f;
@@ -104,6 +127,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> ProneAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> DodgeAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> ScoreboardAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> InventoryAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuUpAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuDownAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuLeftAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuRightAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuConfirmAction;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
 	bool bAdminFlying = false;
@@ -122,6 +151,12 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerDodge(FVector_NetQuantizeNormal Direction);
+
+	UFUNCTION(Server, Reliable)
+	void ServerGather(FVector_NetQuantize Location);
+
+	UFUNCTION(Server, Reliable)
+	void ServerPlace(FName ItemId, FVector_NetQuantize AimPoint, float Yaw);
 
 private:
 	void BuildDefaultInputIfNeeded();
@@ -163,6 +198,20 @@ private:
 	void Input_Dodge();
 	void Input_ScoreboardStarted();
 	void Input_ScoreboardCompleted();
+	void Input_Inventory();
+	void Input_MenuUp();
+	void Input_MenuDown();
+	void Input_MenuLeft();
+	void Input_MenuRight();
+	void Input_MenuConfirm();
+
+	// NAPlayerCharacter_Survival.cpp
+	void UpdateGatherFocus(const FHitResult& Hit);
+	void UpdateBuildPreview();
+	bool ComputePlacement(ENABuildPieceType Type, const FVector& AimPoint, float Yaw, FTransform& OutTransform) const;
+	void StartBuilding(FName ItemId);
+	void StopBuilding();
+	int32 GetMenuEntryCount() const;
 
 	TWeakObjectPtr<AActor> FocusedInteractable;
 	float NextFootstepNoiseTime = 0.f;
@@ -170,6 +219,17 @@ private:
 	bool bSwimDescend = false;
 	bool bSliding = false;
 	float LastDodgeTime = -100.f;
+	float LastGatherTime = -100.f;
+	bool bInventoryOpen = false;
+	int32 InventoryTab = 0;
+	int32 InventoryIndex = 0;
+	FString GatherPrompt;
+	FVector GatherLocation = FVector::ZeroVector;
+	bool bBuildMode = false;
+	FName BuildItem;
+	float BuildYaw = 0.f;
+	bool bPlacementValid = false;
+	FVector BuildAimPoint = FVector::ZeroVector;
 	float DefaultGroundFriction = 8.f;
 	float DefaultBrakingDeceleration = 1800.f;
 	FTimerHandle SlideTimer;

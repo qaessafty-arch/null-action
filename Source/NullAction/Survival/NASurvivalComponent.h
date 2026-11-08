@@ -28,6 +28,7 @@ public:
 	void ConsumeStamina(float Amount);
 	float RestoreFood(float Amount);
 	float RestoreWater(float Amount);
+	void WarmToNormal() { BodyTemperature = NormalTemperature; }
 
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetStaminaFraction() const { return MaxStamina > 0.f ? Stamina / MaxStamina : 0.f; }
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetHungerFraction() const { return MaxHunger > 0.f ? Hunger / MaxHunger : 0.f; }

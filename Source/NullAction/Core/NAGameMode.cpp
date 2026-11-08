@@ -23,6 +23,7 @@
 #include "Interaction/NADoor.h"
 #include "Interaction/NALootContainer.h"
 #include "Interaction/NANote.h"
+#include "Interaction/NAResourceNode.h"
 
 ANAGameMode::ANAGameMode()
 {
@@ -273,6 +274,36 @@ void ANAGameMode::SpawnArenaContent()
 				Medkit->SupplyType = ENASupplyType::Medkit;
 				Medkit->Amount = 60.f;
 				Medkit->FinishSpawning(Cabin->MedkitTransform());
+			}
+		}
+	}
+
+	// Gathering spots: herbs and berries around the cabin and arena edges, scrap near the combat yard.
+	{
+		struct FNodeSpot { ENAResourceNodeType Type; FVector Location; };
+		const FVector2D Cabin = NATerrain::CabinCenter();
+		const FNodeSpot Spots[] =
+		{
+			{ ENAResourceNodeType::HerbBush,  FVector(Cabin.X + 700.f, Cabin.Y + 600.f, 0.f) },
+			{ ENAResourceNodeType::HerbBush,  FVector(Cabin.X - 800.f, Cabin.Y - 700.f, 0.f) },
+			{ ENAResourceNodeType::HerbBush,  FVector(-3500.f, -500.f, 0.f) },
+			{ ENAResourceNodeType::HerbBush,  FVector(-1200.f, 3600.f, 0.f) },
+			{ ENAResourceNodeType::BerryBush, FVector(Cabin.X + 900.f, Cabin.Y - 300.f, 0.f) },
+			{ ENAResourceNodeType::BerryBush, FVector(-3600.f, 1200.f, 0.f) },
+			{ ENAResourceNodeType::BerryBush, FVector(2000.f, 3600.f, 0.f) },
+			{ ENAResourceNodeType::ScrapPile, FVector(1900.f, -1800.f, 0.f) },
+			{ ENAResourceNodeType::ScrapPile, FVector(3700.f, -3700.f, 0.f) },
+			{ ENAResourceNodeType::ScrapPile, FVector(Cabin.X - 300.f, Cabin.Y + 900.f, 0.f) },
+		};
+		for (const FNodeSpot& Spot : Spots)
+		{
+			const FVector Ground(Spot.Location.X, Spot.Location.Y, FMath::Max(0.f, NATerrain::HeightAt(Spot.Location.X, Spot.Location.Y)));
+			const FTransform Where(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), ArenaTransform.TransformPosition(Ground));
+			if (ANAResourceNode* Node = World->SpawnActorDeferred<ANAResourceNode>(ANAResourceNode::StaticClass(), Where,
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+			{
+				Node->NodeType = Spot.Type;
+				Node->FinishSpawning(Where);
 			}
 		}
 	}

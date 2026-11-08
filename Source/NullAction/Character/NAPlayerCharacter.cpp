@@ -17,6 +17,7 @@
 #include "Interaction/NAInteractable.h"
 #include "Perception/AISense_Hearing.h"
 #include "Survival/NASurvivalComponent.h"
+#include "Inventory/NAInventoryComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWaterVolume.h"
@@ -46,6 +47,7 @@ ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	FollowCamera->SetFieldOfView(DefaultFieldOfView);
 
 	SurvivalComponent = CreateDefaultSubobject<UNASurvivalComponent>(TEXT("Survival"));
+	InventoryComponent = CreateDefaultSubobject<UNAInventoryComponent>(TEXT("Inventory"));
 
 	// Swimming uses the movement component's flying mode (predicted and replicated like walking).
 	GetCharacterMovement()->MaxFlySpeed = SwimSpeed;
@@ -63,6 +65,7 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 	{
 		UpdateCamera(DeltaSeconds);
 		UpdateInteractionFocus();
+		UpdateBuildPreview();
 	}
 
 	if (HasAuthority())
@@ -404,6 +407,7 @@ void ANAPlayerCharacter::UpdateCamera(float DeltaSeconds)
 void ANAPlayerCharacter::UpdateInteractionFocus()
 {
 	FocusedInteractable = nullptr;
+	GatherPrompt.Reset();
 	if (IsDead())
 	{
 		return;
@@ -424,7 +428,9 @@ void ANAPlayerCharacter::UpdateInteractionFocus()
 	if (Interactable && FVector::Dist(Candidate->GetActorLocation(), GetActorLocation()) <= InteractionRange && Interactable->CanInteract(this))
 	{
 		FocusedInteractable = Candidate;
+		return;
 	}
+	UpdateGatherFocus(Hit);
 }
 
 void ANAPlayerCharacter::ServerInteract_Implementation(AActor* Target)
@@ -509,6 +515,12 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	ProneAction = MakeAction(TEXT("IA_Prone"), EInputActionValueType::Boolean);
 	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
+	InventoryAction = MakeAction(TEXT("IA_Inventory"), EInputActionValueType::Boolean);
+	MenuUpAction = MakeAction(TEXT("IA_MenuUp"), EInputActionValueType::Boolean);
+	MenuDownAction = MakeAction(TEXT("IA_MenuDown"), EInputActionValueType::Boolean);
+	MenuLeftAction = MakeAction(TEXT("IA_MenuLeft"), EInputActionValueType::Boolean);
+	MenuRightAction = MakeAction(TEXT("IA_MenuRight"), EInputActionValueType::Boolean);
+	MenuConfirmAction = MakeAction(TEXT("IA_MenuConfirm"), EInputActionValueType::Boolean);
 
 	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NullActionDefault"), RF_Transient);
 
@@ -586,6 +598,13 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(DodgeAction, EKeys::Gamepad_RightThumbstick);
 	IMC->MapKey(ScoreboardAction, EKeys::Tab);
 	IMC->MapKey(ScoreboardAction, EKeys::Gamepad_Special_Left);
+	IMC->MapKey(InventoryAction, EKeys::I);
+	IMC->MapKey(InventoryAction, EKeys::Gamepad_Special_Right);
+	IMC->MapKey(MenuUpAction, EKeys::Up);
+	IMC->MapKey(MenuDownAction, EKeys::Down);
+	IMC->MapKey(MenuLeftAction, EKeys::Left);
+	IMC->MapKey(MenuRightAction, EKeys::Right);
+	IMC->MapKey(MenuConfirmAction, EKeys::Enter);
 
 	MappingContext = IMC;
 }
@@ -613,6 +632,12 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &ThisClass::Input_CrouchCompleted);
 	if (ProneAction) { Input->BindAction(ProneAction, ETriggerEvent::Started, this, &ThisClass::Input_Prone); }
 	if (DodgeAction) { Input->BindAction(DodgeAction, ETriggerEvent::Started, this, &ThisClass::Input_Dodge); }
+	if (InventoryAction)   { Input->BindAction(InventoryAction, ETriggerEvent::Started, this, &ThisClass::Input_Inventory); }
+	if (MenuUpAction)      { Input->BindAction(MenuUpAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuUp); }
+	if (MenuDownAction)    { Input->BindAction(MenuDownAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuDown); }
+	if (MenuLeftAction)    { Input->BindAction(MenuLeftAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuLeft); }
+	if (MenuRightAction)   { Input->BindAction(MenuRightAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuRight); }
+	if (MenuConfirmAction) { Input->BindAction(MenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuConfirm); }
 	if (ScoreboardAction)
 	{
 		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
@@ -830,6 +855,14 @@ void ANAPlayerCharacter::UpdateDesiredGait()
 
 void ANAPlayerCharacter::Input_FireStarted()
 {
+	if (bBuildMode)
+	{
+		if (bPlacementValid)
+		{
+			ServerPlace(BuildItem, BuildAimPoint, BuildYaw); // The server re-checks everything.
+		}
+		return;
+	}
 	if (ANAWeapon* Weapon = GetCurrentWeapon())
 	{
 		if (IsSprinting())
@@ -851,6 +884,11 @@ void ANAPlayerCharacter::Input_FireCompleted()
 
 void ANAPlayerCharacter::Input_AimStarted()
 {
+	if (bBuildMode)
+	{
+		StopBuilding(); // Right-click cancels building.
+		return;
+	}
 	SetAiming(true);
 }
 
@@ -861,6 +899,11 @@ void ANAPlayerCharacter::Input_AimCompleted()
 
 void ANAPlayerCharacter::Input_Reload()
 {
+	if (bBuildMode)
+	{
+		BuildYaw = FMath::Fmod(BuildYaw + 90.f, 360.f); // R rotates the piece while building.
+		return;
+	}
 	if (ANAWeapon* Weapon = GetCurrentWeapon())
 	{
 		Weapon->RequestReload();
@@ -872,6 +915,10 @@ void ANAPlayerCharacter::Input_Interact()
 	if (AActor* Target = FocusedInteractable.Get())
 	{
 		ServerInteract(Target);
+	}
+	else if (!GatherPrompt.IsEmpty())
+	{
+		ServerGather(GatherLocation);
 	}
 }
 
