@@ -21,6 +21,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Weapons/NAWeaponTypes.h"
+#include "World/NAWorldEnvironment.h"
 
 namespace NAOnline
 {
@@ -578,6 +579,38 @@ void ANAGameMode::HandleAdminCommand(ANAPlayerController* Caller, ENAAdminComman
 		BroadcastSystemMessage(FString::Printf(TEXT("%s is now %s."), *TargetState->GetPlayerName(), NAOnline::RoleName(NewRole)));
 		break;
 	}
+
+	case ENAAdminCommand::Weather:
+	{
+		ENAWeather NewWeather;
+		ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+		if (Environment && ANAWorldEnvironment::ParseWeather(Arg1, NewWeather))
+		{
+			Environment->SetWeather(NewWeather, 10.f);
+			BroadcastSystemMessage(FString::Printf(TEXT("Weather changing to %s."), ANAWorldEnvironment::WeatherName(NewWeather)));
+		}
+		else
+		{
+			SystemMessage(Caller, TEXT("Usage: NAWeather Clear|Cloudy|Rain|HeavyRain|Thunderstorm|Fog|Snow|Blizzard|Windy|DustStorm"));
+		}
+		break;
+	}
+
+	case ENAAdminCommand::Time:
+		if (ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
+		{
+			Environment->SetTimeOfDay(FCString::Atof(*Arg1));
+			BroadcastSystemMessage(FString::Printf(TEXT("Time set to %s:00."), *Arg1));
+		}
+		break;
+
+	case ENAAdminCommand::DayLength:
+		if (ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
+		{
+			Environment->SetDayLengthMinutes(FCString::Atof(*Arg1));
+			SystemMessage(Caller, FString::Printf(TEXT("A full day now lasts %s real minutes."), *Arg1));
+		}
+		break;
 
 	case ENAAdminCommand::ListPlayers:
 	{

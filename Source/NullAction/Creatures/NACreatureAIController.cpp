@@ -14,6 +14,7 @@
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
+#include "World/NAWorldEnvironment.h"
 
 namespace NACreatureSpeeds
 {
@@ -234,7 +235,13 @@ void ANACreatureAIController::EnterState(ENACreatureState NewState)
 	{
 	case ENACreatureState::Roam:   Creature->SetMoveSpeed(NACreatureSpeeds::Roam);   ClearFocus(EAIFocusPriority::Gameplay); break;
 	case ENACreatureState::Stalk:  Creature->SetMoveSpeed(bPreyVisible ? NACreatureSpeeds::Stalk : NACreatureSpeeds::Investigate); break;
-	case ENACreatureState::Hunt:   Creature->SetMoveSpeed(NACreatureSpeeds::Charge); break;
+	case ENACreatureState::Hunt:
+	{
+		// Night predator: faster charges in the dark.
+		const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+		Creature->SetMoveSpeed(NACreatureSpeeds::Charge * (Environment && Environment->IsNight() ? 1.2f : 1.f));
+		break;
+	}
 	case ENACreatureState::Flee:   Creature->SetMoveSpeed(NACreatureSpeeds::Flee);   ClearFocus(EAIFocusPriority::Gameplay); MoveToPoint(Creature->GetDenLocation(), 150.f); break;
 	case ENACreatureState::Return: Creature->SetMoveSpeed(NACreatureSpeeds::Roam);   ClearFocus(EAIFocusPriority::Gameplay); MoveToPoint(Creature->GetDenLocation(), 300.f); break;
 	}
@@ -296,8 +303,10 @@ void ANACreatureAIController::TickStalk(float Now, float DeltaSeconds)
 	SetFocus(Target);
 	const float Stalked = Now - StateStartTime;
 
-	// Opening: prey looks away, or patience runs out.
-	if ((Stalked > 1.5f && !IsPreyLookingAtMe(0.3f)) || Stalked > 7.f)
+	// Opening: prey looks away, or patience runs out (much sooner at night).
+	const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+	const float Patience = Environment && Environment->IsNight() ? 3.5f : 7.f;
+	if ((Stalked > 1.5f && !IsPreyLookingAtMe(0.3f)) || Stalked > Patience)
 	{
 		EnterState(ENACreatureState::Hunt);
 		return;
@@ -357,7 +366,8 @@ void ANACreatureAIController::TickHunt(float Now)
 		return;
 	}
 
-	Creature->SetMoveSpeed(NACreatureSpeeds::Charge);
+	const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+	Creature->SetMoveSpeed(NACreatureSpeeds::Charge * (Environment && Environment->IsNight() ? 1.2f : 1.f));
 	MoveToPoint(bPreyVisible ? Target->GetActorLocation() : LastKnownLocation, Creature->GetBiteRange() * 0.6f);
 }
 

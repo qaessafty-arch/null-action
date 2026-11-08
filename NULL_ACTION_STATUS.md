@@ -1,6 +1,36 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.6 (Stages 1-2 complete + 3A) compiles and runs on owner's PC after adding the CoreOnline module. Next: 4A day/night + weather (3B waits on the owner's Epic/Google developer accounts)._
+_Last updated: 2026-11-08 — v0.7: Milestone 4A (day/night + dynamic weather) written, not yet built. v0.6 (Stages 1-2 + 3A) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 4A: day/night cycle and dynamic weather (Stage 4, part 1)
+
+Status: **written, not yet compiled or tested (v0.7).** (Stage 3B, online services, is on hold until the owner creates Epic/Google developer accounts.)
+
+| Feature | How it works |
+|---|---|
+| Day/night | Sun moves east → overhead → west; a bluish moon at night; sky light dims at night. A full day = 40 real minutes (owner: `NADayLength <minutes>`, `NATime <hour>`). |
+| Weather | Clear, Cloudy, Rain, HeavyRain, Thunderstorm (lightning flashes), Fog, Snow, Blizzard, Windy, DustStorm. Changes by itself every 4–9 minutes along natural sequences (clouds → rain → storm…), blending over ~45 s. Owner: `NAWeather Snow`. |
+| Visuals | Fog density, dimmer sun and sky, rain streaks, falling snow, blowing dust with brown tint, lightning flashes. Rain/snow/dust are drawn with instanced shapes (no imported particle assets). |
+| Multiplayer | Server owns time and weather; every client sees the same conditions (replicated, smoothly extrapolated). |
+| Gameplay: temperature | Ambient 12–24 °C through the day, minus weather (snow −18, blizzard −28, rain −5…). Below 15 °C your body cools (faster when wet from rain); hypothermia slows stamina and, severe, hurts. |
+| Gameplay: visibility | Soldiers' sight range shrinks in fog, rain, blizzards, dust and darkness (e.g. fog ×0.35, night ×0.55). |
+| Gameplay: movement | Snow slows everyone (×0.88), blizzards more (×0.75). |
+| Gameplay: sound | Rain and wind mask footsteps (enemies hear you from shorter range). |
+| Gameplay: night predator | The Ash Stalker charges 20% faster and stalks for half as long before attacking at night. |
+| HUD | Clock, weather and ambient temperature at the top; "NIGHT" after dark. |
+
+Honest limits: no volumetric clouds or star field yet; rain and snow don't stop under roofs yet (comes with real buildings); thunder needs a sound file; regional weather tables come with the open world (Stage 4 continues).
+
+### 4A test checklist
+- [ ] HUD says `dev build 0.7`; clock and weather shown at the top
+- [ ] `NATime 20` → dusk then night (moonlight, darker sky, "NIGHT"); `NATime 7` → sunrise
+- [ ] `NAWeather Rain` → rain streaks, darker, foggier; `NAWeather Thunderstorm` → lightning flashes
+- [ ] `NAWeather Snow` / `Blizzard` → snow, slower movement, body temperature falls (HUD)
+- [ ] `NAWeather Fog` → soldiers only notice you much closer
+- [ ] `NAWeather DustStorm` → brown tint and blowing dust
+- [ ] Night: the Ash Stalker attacks sooner and faster
+- [ ] Two players see the same time and weather
+- [ ] Leave the game running ~10 minutes: weather changes on its own
 
 ## Milestone 3A: multiplayer foundation and owner permissions (Stage 3, part 1)
 

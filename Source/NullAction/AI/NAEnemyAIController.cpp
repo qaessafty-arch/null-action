@@ -18,6 +18,7 @@
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
 #include "Weapons/NAWeapon.h"
+#include "World/NAWorldEnvironment.h"
 
 namespace NAAIConstants
 {
@@ -92,6 +93,8 @@ void ANAEnemyAIController::OnUnPossess()
 void ANAEnemyAIController::SetDifficulty(ENADifficulty NewDifficulty)
 {
 	Profile = NAAI::GetDifficultyProfile(NewDifficulty);
+	AppliedVisibility = 1.f;
+	NextVisibilityCheck = 0.f; // Re-apply weather visibility on the next think.
 	if (ANAEnemySoldier* Soldier = GetSoldier())
 	{
 		Soldier->Difficulty = NewDifficulty;
@@ -130,6 +133,22 @@ void ANAEnemyAIController::Think()
 	const float Now = GetWorld()->GetTimeSeconds();
 	const float DeltaSeconds = Now - LastThinkTime;
 	LastThinkTime = Now;
+
+	// Weather and darkness change how far soldiers can see (re-checked every 2 s).
+	if (Now >= NextVisibilityCheck)
+	{
+		NextVisibilityCheck = Now + 2.f;
+		const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+		const float Visibility = Environment ? Environment->GetVisibilityScale() : 1.f;
+		if (FMath::Abs(Visibility - AppliedVisibility) > 0.05f)
+		{
+			AppliedVisibility = Visibility;
+			SightConfig->SightRadius = Profile.SightRadius * Visibility;
+			SightConfig->LoseSightRadius = SightConfig->SightRadius + 500.f;
+			Perception->ConfigureSense(*SightConfig);
+			Perception->RequestStimuliListenerUpdate();
+		}
+	}
 
 	UpdatePerception(DeltaSeconds, Now);
 

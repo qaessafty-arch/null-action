@@ -18,7 +18,7 @@ Source/
     Core/       Game mode (+ NAGameMode_Online: roles, bans, chat, admin, records), game/player state, player controller, HUD
     Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
     Animation/  UNAAnimInstance — native parent for every character AnimBP
-    World/      ANATestArena — code-built test course; ANAWaterVolume — swimmable water
+    World/      ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust)
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component

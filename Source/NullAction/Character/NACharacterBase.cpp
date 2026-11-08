@@ -17,6 +17,7 @@
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Weapons/NAWeapon.h"
+#include "World/NAWorldEnvironment.h"
 
 namespace NACharacter
 {
@@ -209,6 +210,13 @@ void ANACharacterBase::ApplyGait()
 	{
 		Speed *= 0.75f;
 		CrouchedSpeed *= 0.75f;
+	}
+
+	// Deep snow / blizzards slow everyone.
+	if (const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
+	{
+		Speed *= Environment->GetMoveSpeedScale();
+		CrouchedSpeed *= Environment->GetMoveSpeedScale();
 	}
 
 	GetCharacterMovement()->MaxWalkSpeed = Speed;

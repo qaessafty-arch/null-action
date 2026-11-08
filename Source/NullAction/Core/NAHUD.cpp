@@ -15,6 +15,7 @@
 #include "Interaction/NAInteractable.h"
 #include "Survival/NASurvivalComponent.h"
 #include "Weapons/NAWeapon.h"
+#include "World/NAWorldEnvironment.h"
 
 namespace
 {
@@ -186,6 +187,24 @@ void ANAHUD::DrawHUD()
 	const UNASurvivalComponent* Survival = Player->GetSurvivalComponent();
 	const ANAWeapon* Weapon = Player->GetCurrentWeapon();
 
+	// ----- Time and weather (top centre) and weather tint -----
+	if (const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
+	{
+		const FNAWeatherProfile Weather = Environment->GetBlendedProfile();
+		if (Weather.Tint.A > 0.01f)
+		{
+			DrawRect(Weather.Tint, 0.f, 0.f, ScreenW, ScreenH);
+		}
+		const float Hours = Environment->GetTimeOfDay();
+		const int32 Hour = FMath::FloorToInt(Hours);
+		const int32 Minute = FMath::FloorToInt((Hours - Hour) * 60.f);
+		const FString Clock = FString::Printf(TEXT("%02d:%02d   %s   %.0f C%s"), Hour, Minute,
+			ANAWorldEnvironment::WeatherName(Environment->GetWeather()), Environment->GetAmbientTemperature(),
+			Environment->IsNight() ? TEXT("   NIGHT") : TEXT(""));
+		DrawRect(Dim, CenterX - 120.f, 18.f, 240.f, 24.f);
+		DrawText(Clock, TextColor, CenterX - 105.f, 21.f, nullptr, 1.f);
+	}
+
 	// ----- Underwater tint -----
 	if (Player->IsCameraUnderwater())
 	{
@@ -211,11 +230,11 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.6"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.7"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
-		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive ...)"), TextColor);
+		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive NAWeather NATime ...)"), TextColor);
 		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)
 		{
 			if (MyState->GetRole() != ENAPlayerRole::Player)

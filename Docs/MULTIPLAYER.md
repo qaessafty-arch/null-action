@@ -25,7 +25,8 @@
 Chat: `NAChat "hello"`, `NATeam "..."`, `NALocal "..."`, `NAWhisper Name "..."`, `NAMute Name`, `NAUnmute Name`, `NAReport Name "reason"`, `NAPlayers`.
 
 Admin (server checks role): `NAGod`, `NAFly`, `NAHeal`, `NATeleport X Y Z`, `NAGoto Name`, `NABring Name`,
-`NAGive pistol|rifle|shotgun|sniper`, `NASpawn soldier|creature|dummy`, `NADifficulty Easy|Normal|Hard|Expert`.
+`NAGive pistol|rifle|shotgun|sniper`, `NASpawn soldier|creature|dummy`, `NADifficulty Easy|Normal|Hard|Expert`,
+`NAWeather <type>`, `NATime <hour>`, `NADayLength <minutes>`.
 Moderator: `NAKick Name`. Owner only: `NABan Name`, `NASetRole Name Player|Moderator|Admin|Owner`.
 
 ## Making yourself owner on a dedicated server

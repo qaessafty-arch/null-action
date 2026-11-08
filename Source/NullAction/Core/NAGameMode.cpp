@@ -17,6 +17,7 @@
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NATestArena.h"
 #include "World/NAWaterVolume.h"
+#include "World/NAWorldEnvironment.h"
 
 ANAGameMode::ANAGameMode()
 {
@@ -31,6 +32,12 @@ ANAGameMode::ANAGameMode()
 void ANAGameMode::StartPlay()
 {
 	EnsureTestArenaIfLevelIsEmpty();
+
+	// One shared sky, time of day and weather for everyone on this server.
+	if (!ANAWorldEnvironment::Get(this))
+	{
+		GetWorld()->SpawnActor<ANAWorldEnvironment>(ANAWorldEnvironment::StaticClass(), FTransform::Identity);
+	}
 	Super::StartPlay();
 }
 

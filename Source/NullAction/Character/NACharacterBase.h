@@ -54,6 +54,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NullAction|Movement")
 	void ToggleCrouch();
 
+	/** Re-applies speed limits (called when weather changes). */
+	void RefreshMovementSpeed() { ApplyGait(); }
+
 	/** Players override this with stamina rules. */
 	virtual bool CanSprint() const { return true; }
 

@@ -115,4 +115,6 @@ private:
 	bool bHasRetreated = false;
 
 	FTimerHandle ThinkTimer;
+	float AppliedVisibility = 1.f;
+	float NextVisibilityCheck = 0.f;
 };

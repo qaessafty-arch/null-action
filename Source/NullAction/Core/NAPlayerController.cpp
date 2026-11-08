@@ -81,6 +81,9 @@ void ANAPlayerController::NAKick(const FString& PlayerName)         { SendAdmin(
 void ANAPlayerController::NABan(const FString& PlayerName)          { SendAdmin(ENAAdminCommand::Ban, PlayerName); }
 void ANAPlayerController::NASetRole(const FString& PlayerName, const FString& RoleName) { SendAdmin(ENAAdminCommand::SetRole, PlayerName, RoleName); }
 void ANAPlayerController::NAPlayers()                               { SendAdmin(ENAAdminCommand::ListPlayers); }
+void ANAPlayerController::NAWeather(const FString& Weather)         { SendAdmin(ENAAdminCommand::Weather, Weather); }
+void ANAPlayerController::NATime(float Hours)                       { SendAdmin(ENAAdminCommand::Time, FString::SanitizeFloat(Hours)); }
+void ANAPlayerController::NADayLength(float Minutes)                { SendAdmin(ENAAdminCommand::DayLength, FString::SanitizeFloat(Minutes)); }
 
 void ANAPlayerController::ServerAdminCommand_Implementation(ENAAdminCommand Command, const FString& Arg1, const FString& Arg2, FVector_NetQuantize Location)
 {

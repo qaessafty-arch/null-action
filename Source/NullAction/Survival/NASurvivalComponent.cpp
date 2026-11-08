@@ -4,6 +4,7 @@
 #include "Combat/NAHealthComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "World/NAWorldEnvironment.h"
 
 UNASurvivalComponent::UNASurvivalComponent()
 {
@@ -93,10 +94,19 @@ void UNASurvivalComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		Oxygen = FMath::Min(MaxOxygen, Oxygen + OxygenRecoverPerSecond * DeltaTime);
 	}
 
-	// Temperature: water chills, dry land slowly warms you back up; sprinting warms a little.
+	// Temperature: water and cold weather chill you; mild weather warms you back up; sprinting warms a little.
+	const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this);
+	const float Ambient = Environment ? Environment->GetAmbientTemperature() : 20.f;
+	const bool bWetFromRain = Environment && Environment->GetBlendedProfile().Rain > 0.3f;
 	if (Character->IsInWater())
 	{
 		BodyTemperature = FMath::Max(30.f, BodyTemperature - WaterCoolingPerSecond * DeltaTime);
+	}
+	else if (Ambient < 15.f)
+	{
+		float Cooling = (15.f - Ambient) * 0.0015f * (bWetFromRain ? 1.5f : 1.f);
+		if (Character->IsSprinting()) { Cooling *= 0.5f; }
+		BodyTemperature = FMath::Max(30.f, BodyTemperature - Cooling * DeltaTime);
 	}
 	else if (BodyTemperature < NormalTemperature)
 	{

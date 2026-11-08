@@ -8,6 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/DirectionalLight.h"
+#include "World/NAWorldEnvironment.h"
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -179,16 +180,22 @@ void ANATestArena::BeginPlay()
 	}
 
 	TActorIterator<ADirectionalLight> ExistingSun(GetWorld());
-	const bool bLevelHasSun = static_cast<bool>(ExistingSun);
+	TActorIterator<ANAWorldEnvironment> ExistingEnvironment(GetWorld());
+	const bool bLevelHasSun = static_cast<bool>(ExistingSun) || static_cast<bool>(ExistingEnvironment);
 
 	if (!bProvideLighting || bLevelHasSun)
 	{
-		Sun->DestroyComponent();
-		Atmosphere->DestroyComponent();
-		SkyLight->DestroyComponent();
-		Fog->DestroyComponent();
-		UE_LOG(LogNullAction, Log, TEXT("Test arena: using the level's own lighting."));
+		RemoveBuiltInLighting();
+		UE_LOG(LogNullAction, Log, TEXT("Test arena: using the level's / world environment's lighting."));
 	}
+}
+
+void ANATestArena::RemoveBuiltInLighting()
+{
+	if (Sun)        { Sun->DestroyComponent();        Sun = nullptr; }
+	if (Atmosphere) { Atmosphere->DestroyComponent(); Atmosphere = nullptr; }
+	if (SkyLight)   { SkyLight->DestroyComponent();   SkyLight = nullptr; }
+	if (Fog)        { Fog->DestroyComponent();        Fog = nullptr; }
 }
 
 FTransform ANATestArena::GetSpawnTransform(int32 Index) const

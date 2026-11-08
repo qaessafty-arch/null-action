@@ -29,6 +29,9 @@ class NULLACTION_API ANATestArena : public AActor
 public:
 	ANATestArena();
 
+	/** Removes the arena's own sun/sky/fog (used when a world environment or level lighting takes over). */
+	void RemoveBuiltInLighting();
+
 	/** World-space spawn transform for player slot Index (players are spread in a ring). */
 	FTransform GetSpawnTransform(int32 Index) const;
 

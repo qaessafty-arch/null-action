@@ -20,6 +20,7 @@
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWaterVolume.h"
+#include "World/NAWorldEnvironment.h"
 #include "Core/NAHUD.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
@@ -369,6 +370,11 @@ void ANAPlayerCharacter::UpdateFootstepNoise()
 	if (IsSprinting())             { Loudness = 1.f;  Range = 1600.f; }
 	else if (bIsCrouched)          { Loudness = 0.1f; Range = 250.f; }
 	else if (Gait == ENAGait::Walk) { Loudness = 0.2f; Range = 400.f; }
+
+	if (const ANAWorldEnvironment* Environment = ANAWorldEnvironment::Get(this))
+	{
+		Range *= Environment->GetNoiseScale();
+	}
 
 	NextFootstepNoiseTime = Now + 0.5f;
 	UAISense_Hearing::ReportNoiseEvent(GetWorld(), GetActorLocation(), Loudness, this, Range, FName(TEXT("Footstep")));

@@ -41,7 +41,10 @@ enum class ENAAdminCommand : uint8
 	Kick,
 	Ban,
 	SetRole,
-	ListPlayers
+	ListPlayers,
+	Weather,
+	Time,
+	DayLength
 };
 
 /**
@@ -77,6 +80,9 @@ public:
 	UFUNCTION(Exec) void NABan(const FString& PlayerName);
 	UFUNCTION(Exec) void NASetRole(const FString& PlayerName, const FString& RoleName);
 	UFUNCTION(Exec) void NAPlayers();
+	UFUNCTION(Exec) void NAWeather(const FString& Weather);
+	UFUNCTION(Exec) void NATime(float Hours);
+	UFUNCTION(Exec) void NADayLength(float Minutes);
 
 	/** Server -> this client: one chat or system line. */
 	UFUNCTION(Client, Reliable)
