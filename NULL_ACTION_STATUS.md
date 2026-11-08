@@ -65,7 +65,7 @@ The combat yard is to your **right** from spawn, about 30 m away, with crates, l
 
 ## Milestone 2A: combat foundation (Stage 2, part 1)
 
-Status: **written, not yet compiled or tested on the owner's PC.**
+Status: ✅ **Compiles on the owner's PC** (UE 5.8.4, VS 2026 / MSVC 14.51: `Result: Succeeded`, no errors, only engine deprecation warnings). In-game behaviour not yet reported. The owner's build contained only the 2A files, so the 2B update still needs installing.
 
 | System | What it does |
 |---|---|
