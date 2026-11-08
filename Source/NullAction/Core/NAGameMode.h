@@ -41,5 +41,10 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ANATestArena> TestArena;
 
+	/** Spawn points this game mode created for the test arena (empty in real levels). */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<APlayerStart>> ArenaStarts;
+
+	int32 NextArenaStart = 0;
 	bool bCheckedLevel = false;
 };

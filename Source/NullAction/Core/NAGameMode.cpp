@@ -5,6 +5,7 @@
 #include "Core/NAHUD.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
+#include "GameFramework/PlayerStartPIE.h"
 #include "World/NATestArena.h"
 
 ANAGameMode::ANAGameMode()
@@ -24,6 +25,19 @@ AActor* ANAGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
 	// Players can be placed before StartPlay (e.g. PIE), so make sure starts exist first.
 	EnsureTestArenaIfLevelIsEmpty();
+
+	// In arena mode, always use the arena's spawn ring. Otherwise the base class would prefer the
+	// editor's temporary "play from camera" start, which can be in mid-air outside the arena.
+	if (ArenaStarts.Num() > 0)
+	{
+		APlayerStart* Start = ArenaStarts[NextArenaStart % ArenaStarts.Num()];
+		++NextArenaStart;
+		if (Start)
+		{
+			return Start;
+		}
+	}
+
 	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
@@ -41,9 +55,14 @@ void ANAGameMode::EnsureTestArenaIfLevelIsEmpty()
 		return;
 	}
 
-	if (TActorIterator<APlayerStart> ExistingStart(World); ExistingStart)
+	for (TActorIterator<APlayerStart> It(World); It; ++It)
 	{
-		return; // A real level with its own spawn points: leave it alone.
+		// The editor adds a temporary APlayerStartPIE when you press Play in a level with no
+		// spawn points. That doesn't make it a real level, so ignore it.
+		if (!It->IsA<APlayerStartPIE>())
+		{
+			return; // A real level with its own spawn points: leave it alone.
+		}
 	}
 
 	// Reuse a hand-placed arena if there is one.
@@ -69,7 +88,10 @@ void ANAGameMode::EnsureTestArenaIfLevelIsEmpty()
 
 	for (int32 Index = 0; Index < TestArenaPlayerStarts; ++Index)
 	{
-		World->SpawnActor<APlayerStart>(APlayerStart::StaticClass(), TestArena->GetSpawnTransform(Index), Params);
+		if (APlayerStart* Start = World->SpawnActor<APlayerStart>(APlayerStart::StaticClass(), TestArena->GetSpawnTransform(Index), Params))
+		{
+			ArenaStarts.Add(Start);
+		}
 	}
 
 	UE_LOG(LogNullAction, Log, TEXT("Level has no PlayerStarts: built test arena with %d spawn points."), TestArenaPlayerStarts);

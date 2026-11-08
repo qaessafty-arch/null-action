@@ -2,10 +2,19 @@
 
 _Last updated: 2026-11-08 — Milestone 1 (project foundation + first playable character)_
 
+## First test on owner's PC (2026-11-08)
+
+| Check | Result |
+|---|---|
+| Project compiles in UE 5.8 (VS 2026) | ✅ **Verified**: editor opened with the NullAction module built |
+| Game mode + dev HUD load in Play | ✅ **Verified** |
+| Enhanced Input reaches the character (Shift → HUD shows Sprint) | ✅ **Verified** |
+| Test arena appears in an empty level | ❌ **Bug found**: the editor's temporary PIE spawn point made the game mode think the level was real, so no arena was built and the player fell into the void. **Fixed** in `Core/NAGameMode.cpp` (ignores `APlayerStartPIE`, always uses arena spawns in arena mode). Fix not yet re-tested. |
+
 ## ⚠️ Read first: build state
 
 All code in this repository was written in a **Linux cloud container** that has no Unreal Engine,
-no GPU and no Windows toolchain. **None of it has been compiled or run yet.** It is written against
+no GPU and no Windows toolchain. It is tested on the owner's PC (results above). It is written against
 the UE 5.8 API, but until it builds in Unreal Editor on your PC, every feature below counts as
 **"written, not verified"**. Your first compile is the first real test. Send me the errors if it fails.
 
