@@ -1,10 +1,10 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.8: Milestone 4B (streaming open world, cabin with interiors) written. v0.7 and v0.8 not yet built; v0.6 (Stages 1-2 + 3A) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v0.8 (Stages 1-2, 3A, 4A, 4B) compiles and runs on owner's PC. Next: 5A inventory, gathering, crafting, building. 3B waits on the owner's Epic/Google developer accounts._
 
 ## Milestone 4B: streaming open world and the Old Cabin (Stage 4, part 2)
 
-Status: **written, not yet compiled or tested (v0.8).**
+Status: ✅ **Compiles and runs on owner's PC (v0.8)**; owner reports it working. Per-item checklist results not given.
 
 | Feature | How it works |
 |---|---|
@@ -33,7 +33,7 @@ Honest limits: this is a runtime-generated world, not a hand-sculpted Unreal Lan
 
 ## Milestone 4A: day/night cycle and dynamic weather (Stage 4, part 1)
 
-Status: **written, not yet compiled or tested (v0.7).** (Stage 3B, online services, is on hold until the owner creates Epic/Google developer accounts.)
+Status: ✅ **Compiles and runs on owner's PC (as part of v0.8)**; owner reports it working. (Stage 3B, online services, is on hold until the owner creates Epic/Google developer accounts.)
 
 | Feature | How it works |
 |---|---|
