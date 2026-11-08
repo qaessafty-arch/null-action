@@ -558,6 +558,11 @@ void ANABoss::HandleDeathStateChanged(bool bNowDead)
 
 void ANABoss::OnRep_BossState()
 {
+	if (BossState == ENABossState::Awake && LastSeenState != ENABossState::Awake)
+	{
+		NAAssets::PlayAt(this, UNAAssetSettings::Get()->BossRoar, GetActorLocation(), 1.5f);
+	}
+	LastSeenState = BossState;
 	// Sleeping: dim core. Awake: blazing.
 	if (CoreGlow)
 	{

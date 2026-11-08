@@ -7,6 +7,9 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Core/NAAssetSettings.h"
 #include "Components/SkyLightComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -138,6 +141,22 @@ void ANAWorldEnvironment::BeginPlay()
 		FActorSpawnParameters Params;
 		Params.Owner = this;
 		Precipitation = GetWorld()->SpawnActor<ANAPrecipitation>(ANAPrecipitation::StaticClass(), FTransform::Identity, Params);
+
+		const UNAAssetSettings* Assets = UNAAssetSettings::Get();
+		auto MakeBed = [this](const TSoftObjectPtr<USoundBase>& Path) -> UAudioComponent*
+		{
+			USoundBase* Sound = NAAssets::LoadSound(Path);
+			UAudioComponent* Bed = Sound ? UGameplayStatics::CreateSound2D(this, Sound, 1.f, 1.f, 0.f, nullptr, /*bPersistAcrossLevelTransition*/ false, /*bAutoDestroy*/ false) : nullptr;
+			if (Bed)
+			{
+				Bed->SetVolumeMultiplier(0.f);
+				Bed->Play();
+			}
+			return Bed;
+		};
+		AmbientDayAudio = MakeBed(Assets->AmbientDay);
+		AmbientNightAudio = MakeBed(Assets->AmbientNight);
+		RainAudio = MakeBed(Assets->RainLoop);
 	}
 	UpdateVisuals(0.f);
 }
@@ -380,6 +399,7 @@ void ANAWorldEnvironment::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	LocalTimeOfDay = FMath::Fmod(LocalTimeOfDay + HoursPerSecond * DeltaSeconds, 24.f);
+	UpdateAmbience(DeltaSeconds);
 
 	if (HasAuthority())
 	{
@@ -430,4 +450,29 @@ void ANAWorldEnvironment::UpdateVisuals(float DeltaSeconds)
 	{
 		Precipitation->SetIntensity(Profile.Rain, Profile.Snow, Profile.Dust);
 	}
+}
+
+void ANAWorldEnvironment::UpdateAmbience(float DeltaSeconds)
+{
+	if (!AmbientDayAudio && !AmbientNightAudio && !RainAudio)
+	{
+		return;
+	}
+	NightBlend = FMath::FInterpTo(NightBlend, IsNight() ? 1.f : 0.f, DeltaSeconds, 0.2f);
+	const float RainAmount = FMath::Clamp(GetBlendedProfile().Rain, 0.f, 1.f);
+	auto Keep = [](UAudioComponent* Bed, float Volume)
+	{
+		if (!Bed)
+		{
+			return;
+		}
+		Bed->SetVolumeMultiplier(FMath::Max(0.001f, Volume));
+		if (!Bed->IsPlaying())
+		{
+			Bed->Play(); // Restart beds that aren't set to loop.
+		}
+	};
+	Keep(AmbientDayAudio, (1.f - NightBlend) * (1.f - RainAmount * 0.6f));
+	Keep(AmbientNightAudio, NightBlend * (1.f - RainAmount * 0.6f));
+	Keep(RainAudio, RainAmount);
 }

@@ -16,6 +16,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NAEventShapes
 {
@@ -97,6 +98,7 @@ void ANAEmberStrike::Tick(float DeltaSeconds)
 		bBurst = true;
 		Disc->SetVisibility(false);
 		Glow->SetIntensity(60000.f); // The flash of the ember burst.
+		NAAssets::SpawnEffect(this, UNAAssetSettings::Get()->LightningStrike, GetActorLocation());
 		if (HasAuthority())
 		{
 			TArray<AActor*> Ignored;

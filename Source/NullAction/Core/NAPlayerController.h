@@ -70,6 +70,7 @@ enum class ENAMenuScreen : uint8
 
 class UNALocalProfile;
 class ACameraActor;
+class UAudioComponent;
 
 /**
  * NULL-ACTION player controller: chat, mute/report, scoreboard toggle and admin console commands.
@@ -190,6 +191,7 @@ private:
 	void SyncMenuPawnState();
 	bool UsesMenuCamera() const;
 	TWeakObjectPtr<APawn> MenuDisabledPawn;
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> MenuMusic;
 	bool bMenuProtectionSent = false;
 
 	ENAMenuScreen MenuScreen = ENAMenuScreen::None;

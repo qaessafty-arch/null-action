@@ -13,6 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Weapons/NATracer.h"
+#include "Core/NAAssetSettings.h"
 
 ANAAshShrine::ANAAshShrine()
 {
@@ -176,6 +177,7 @@ void ANAAshShrine::MulticastRebirthFlare_Implementation()
 		return;
 	}
 	FlareUntil = GetWorld()->GetTimeSeconds() + 1.5f;
+	NAAssets::SpawnEffect(this, UNAAssetSettings::Get()->AshRebirth, GetActorLocation() + FVector(0.f, 0.f, 480.f));
 	const FVector Top = GetActorLocation() + FVector(0.f, 0.f, 2500.f);
 	for (int32 Index = 0; Index < 4; ++Index)
 	{

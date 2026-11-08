@@ -167,7 +167,7 @@ void ANAHUD::DrawMenu(ANAPlayerController* PC, float ScreenW, float ScreenH)
 			DrawText(State->GetPlayerName(), MenuText, ScreenW - 345.f, ScreenH - 110.f, nullptr, 1.1f);
 			DrawText(FString::Printf(TEXT("Level %d   |   Ash %d/%d   |   %d kills"), State->GetPlayerLevel(), State->GetAshCharges(),
 				ANAPlayerState::MaxAshCharges, State->GetKills()), MenuEmber, ScreenW - 345.f, ScreenH - 84.f, nullptr, 0.9f);
-			DrawText(TEXT("dev build 2.1"), MenuDim, ScreenW - 345.f, ScreenH - 62.f, nullptr, 0.8f);
+			DrawText(TEXT("dev build 2.2"), MenuDim, ScreenW - 345.f, ScreenH - 62.f, nullptr, 0.8f);
 		}
 		break;
 	}

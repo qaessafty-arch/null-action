@@ -1,6 +1,7 @@
 #include "Weapons/NAWeapon.h"
 #include "Creatures/NACreature.h"
 #include "Creatures/NABoss.h"
+#include "Core/NAAssetSettings.h"
 
 #include "NullAction.h"
 #include "Character/NACharacterBase.h"
@@ -85,6 +86,18 @@ void ANAWeapon::PostInitializeComponents()
 	GripMesh->SetRelativeRotation(FRotator(-15.f, 0.f, 0.f));
 	GripMesh->SetRelativeScale3D(FVector(5.f, Size.Y * 0.9f, 12.f) / NAWeaponConstants::CubeSize);
 	Muzzle->SetRelativeLocation(FVector(Size.X - 6.f, 0.f, Size.Z * 0.15f));
+
+	// A real weapon model replaces the stand-in block (and its sounds fill any empty Blueprint slots).
+	const FNAWeaponAssets& Assets = GetAssets();
+	if (NAAssets::ApplyProp(Assets.Model, BodyMesh))
+	{
+		GripMesh->SetVisibility(false);
+		const FBox Bounds = BodyMesh->GetStaticMesh()->GetBoundingBox();
+		Muzzle->SetRelativeLocation(Assets.Model.Offset + Assets.Model.Rotation.RotateVector(FVector(Bounds.Max.X, 0.f, (Bounds.Min.Z + Bounds.Max.Z) * 0.5f) * Assets.Model.Scale));
+		BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (!FireSound)   { FireSound = NAAssets::LoadSound(Assets.FireSound); }
+	if (!ReloadSound) { ReloadSound = NAAssets::LoadSound(Assets.ReloadSound); }
 
 	if (HasAuthority())
 	{
@@ -321,6 +334,8 @@ void ANAWeapon::MulticastShotEffects_Implementation(FVector_NetQuantize Start, c
 
 	MuzzleFlash->SetVisibility(true);
 	GetWorldTimerManager().SetTimer(FlashTimer, this, &ANAWeapon::HideMuzzleFlash, 0.05f, false);
+	const UNAAssetSettings* Settings = UNAAssetSettings::Get();
+	NAAssets::SpawnEffect(this, Settings->MuzzleFlash, Start, GetActorRotation());
 
 	if (FireSound)
 	{
@@ -330,6 +345,9 @@ void ANAWeapon::MulticastShotEffects_Implementation(FVector_NetQuantize Start, c
 	for (const FVector_NetQuantize& End : Ends)
 	{
 		ANATracer::Spawn(GetWorld(), Start, End);
+		const FVector Back = (FVector(Start) - FVector(End)).GetSafeNormal();
+		NAAssets::SpawnEffect(this, Settings->BulletImpact_FX, End, Back.Rotation());
+		NAAssets::PlayAt(this, Settings->BulletImpact, End, 0.6f);
 	}
 }
 
@@ -419,4 +437,17 @@ int32 ANAWeapon::AddReserveAmmo(int32 Amount)
 	const int32 Old = ReserveAmmo;
 	ReserveAmmo = FMath::Min(ReserveAmmo + Amount, Stats.MaxReserveAmmo);
 	return ReserveAmmo - Old;
+}
+
+const FNAWeaponAssets& ANAWeapon::GetAssets() const
+{
+	const UNAAssetSettings* Settings = UNAAssetSettings::Get();
+	switch (Stats.Slot)
+	{
+	case 2:  return Settings->AssaultRifle;
+	case 3:  return Settings->Shotgun;
+	case 4:  return Settings->SniperRifle;
+	case 5:  return Settings->HuntingBow;
+	default: return Settings->Pistol;
+	}
 }

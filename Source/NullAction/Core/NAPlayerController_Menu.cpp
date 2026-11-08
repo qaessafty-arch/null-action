@@ -11,6 +11,8 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "World/NATerrainManager.h"
+#include "Components/AudioComponent.h"
+#include "Core/NAAssetSettings.h"
 
 void ANAPlayerController::BeginPlay()
 {
@@ -122,6 +124,18 @@ void ANAPlayerController::OpenMenu(ENAMenuScreen Screen)
 	}
 
 	SyncMenuPawnState();
+	// Menu music plays under every menu except the in-game pause overlay.
+	if (!MenuMusic)
+	{
+		if (USoundBase* Music = NAAssets::LoadSound(UNAAssetSettings::Get()->MenuMusic))
+		{
+			MenuMusic = UGameplayStatics::CreateSound2D(this, Music, 0.8f, 1.f, 0.f, nullptr, false, false);
+		}
+	}
+	if (MenuMusic && !bOverlay && !MenuMusic->IsPlaying())
+	{
+		MenuMusic->FadeIn(1.5f, 0.8f);
+	}
 	const bool bCursor = Screen != ENAMenuScreen::Intro;
 	bShowMouseCursor = bCursor;
 	if (bCursor)
@@ -143,6 +157,7 @@ void ANAPlayerController::CloseMenu()
 		return;
 	}
 	MenuScreen = ENAMenuScreen::None;
+	if (MenuMusic && MenuMusic->IsPlaying()) { MenuMusic->FadeOut(1.5f, 0.f); }
 	if (GetNetMode() == NM_Standalone) { UGameplayStatics::SetGamePaused(this, false); }
 	if (APawn* Body = GetPawn())
 	{
@@ -223,6 +238,10 @@ void ANAPlayerController::OnMenuClick()
 		const FName Action = GameHUD->HitTestMenu(MouseX, MouseY);
 		if (Action != NAME_None)
 		{
+			if (USoundBase* Click = NAAssets::LoadSound(UNAAssetSettings::Get()->UIClick))
+			{
+				UGameplayStatics::PlaySound2D(this, Click);
+			}
 			HandleMenuAction(Action);
 		}
 	}

@@ -17,6 +17,7 @@
 #include "Core/NAGameMode.h"
 #include "Inventory/NAInventoryComponent.h"
 #include "Inventory/NAItems.h"
+#include "Core/NAAssetSettings.h"
 
 #define LOCTEXT_NAMESPACE "NullActionLoot"
 
@@ -52,6 +53,12 @@ void ANALootContainer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void ANALootContainer::BeginPlay()
 {
 	Super::BeginPlay();
+	if (NAAssets::ApplyProp(UNAAssetSettings::Get()->LootCrate, Box))
+	{
+		Lid->SetVisibility(false); // The real crate model replaces box + lid.
+		OnRep_Opened();
+		return;
+	}
 	if (UMaterialInstanceDynamic* MID = Box->CreateAndSetMaterialInstanceDynamic(0))
 	{
 		MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.18f, 0.22f, 0.1f));

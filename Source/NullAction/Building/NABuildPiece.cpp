@@ -13,6 +13,7 @@
 #include "Inventory/NAInventoryComponent.h"
 #include "Inventory/NAItems.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Core/NAAssetSettings.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
@@ -128,6 +129,30 @@ UStaticMeshComponent* ANABuildPiece::AddPart(const FVector& BottomCentre, const 
 void ANABuildPiece::BuildShape()
 {
 	using namespace NABuild;
+
+	// A real mesh from Project Settings -> NULL-ACTION Assets -> Building replaces the plank shapes.
+	const UNAAssetSettings* Assets = UNAAssetSettings::Get();
+	const FNAPropSlot* Slot = PieceType == ENABuildPieceType::Foundation ? &Assets->Foundation
+		: PieceType == ENABuildPieceType::Wall ? &Assets->Wall
+		: PieceType == ENABuildPieceType::Doorway ? &Assets->Doorway : &Assets->Campfire;
+	if (Slot->IsSet())
+	{
+		UStaticMeshComponent* Real = NewObject<UStaticMeshComponent>(this);
+		Real->SetupAttachment(RootComponent);
+		if (NAAssets::ApplyProp(*Slot, Real))
+		{
+			Real->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+			Real->RegisterComponent();
+			Parts.Add(Real);
+			if (PieceType == ENABuildPieceType::Campfire)
+			{
+				AddFireEffects();
+			}
+			return;
+		}
+		Real->DestroyComponent();
+	}
+
 	switch (PieceType)
 	{
 	case ENABuildPieceType::Foundation:
@@ -164,15 +189,21 @@ void ANABuildPiece::BuildShape()
 		AddPart(FVector::ZeroVector, FVector(50.f, 12.f, 12.f), Beams, false);
 		AddPart(FVector::ZeroVector, FVector(12.f, 50.f, 12.f), Beams, false);
 		AddPart(FVector(0.f, 0.f, 10.f), FVector(30.f, 30.f, 20.f), Embers, false);
-		FireLight = NewObject<UPointLightComponent>(this);
-		FireLight->SetupAttachment(RootComponent);
-		FireLight->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
-		FireLight->SetIntensity(6000.f);
-		FireLight->SetAttenuationRadius(800.f);
-		FireLight->SetLightColor(FLinearColor(1.f, 0.55f, 0.2f));
-		FireLight->RegisterComponent();
+		AddFireEffects();
 		break;
 	}
+}
+
+void ANABuildPiece::AddFireEffects()
+{
+	FireLight = NewObject<UPointLightComponent>(this);
+	FireLight->SetupAttachment(RootComponent);
+	FireLight->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
+	FireLight->SetIntensity(6000.f);
+	FireLight->SetAttenuationRadius(800.f);
+	FireLight->SetLightColor(FLinearColor(1.f, 0.55f, 0.2f));
+	FireLight->RegisterComponent();
+	NAAssets::SpawnEffectAttached(UNAAssetSettings::Get()->CampfireFire, RootComponent, FVector(0.f, 0.f, 10.f)); // Real flames, if set.
 }
 
 void ANABuildPiece::BeginPlay()

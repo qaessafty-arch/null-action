@@ -204,6 +204,12 @@ void ANACreature::BeginPlay()
 		}
 	}
 
+	// Sounds from Project Settings fill any empty Blueprint slots.
+	const UNAAssetSettings* Assets = UNAAssetSettings::Get();
+	if (!GrowlSound) { GrowlSound = NAAssets::LoadSound(Assets->CreatureGrowl); }
+	if (!BiteSound)  { BiteSound = NAAssets::LoadSound(Assets->CreatureBite); }
+	if (!DeathSound) { DeathSound = NAAssets::LoadSound(Assets->CreatureDeath); }
+
 	// A real model replaces the shape body visually; the (now invisible) shape parts still take the bullet hits.
 	if (NAAssets::ApplyModel(GetModelSlot(), GetMesh(), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()))
 	{

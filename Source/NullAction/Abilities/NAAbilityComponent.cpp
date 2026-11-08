@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Weapons/NATracer.h"
 #include "Abilities/NAEnergyBarrier.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NAAbility
 {
@@ -206,6 +207,7 @@ void UNAAbilityComponent::MulticastLightning_Implementation(FVector_NetQuantize 
 	{
 		return;
 	}
+	NAAssets::SpawnEffect(this, UNAAssetSettings::Get()->LightningStrike, Location);
 	// A jagged bolt from the sky made of tracer segments.
 	FVector Top = Location + FVector(FMath::FRandRange(-200.f, 200.f), FMath::FRandRange(-200.f, 200.f), 2500.f);
 	for (int32 Segment = 0; Segment < 6; ++Segment)

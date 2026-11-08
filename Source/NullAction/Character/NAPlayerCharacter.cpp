@@ -28,6 +28,7 @@
 #include "Core/NAPlayerController.h"
 #include "Core/NAPlayerState.h"
 #include "Creatures/NAHorse.h"
+#include "Core/NAAssetSettings.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
@@ -82,6 +83,24 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 
 	UpdateSwimming();
 	UpdateRescue(DeltaSeconds);
+
+	// Footstep sounds, heard by everyone nearby (crouching is quieter, prone and swimming are silent).
+	if (GetNetMode() != NM_DedicatedServer && GetCharacterMovement()->IsMovingOnGround() && !bIsProne && !IsMounted())
+	{
+		const float Speed = GetVelocity().Size2D();
+		if (Speed > 80.f)
+		{
+			FootstepDistance += Speed * DeltaSeconds;
+			const float Stride = IsSprinting() ? 190.f : bIsCrouched ? 110.f : 150.f;
+			if (FootstepDistance >= Stride)
+			{
+				FootstepDistance = 0.f;
+				const float Volume = bIsCrouched ? 0.35f : IsSprinting() ? 1.f : 0.7f;
+				NAAssets::PlayAt(this, UNAAssetSettings::Get()->Footstep,
+					GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), Volume);
+			}
+		}
+	}
 }
 
 void ANAPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

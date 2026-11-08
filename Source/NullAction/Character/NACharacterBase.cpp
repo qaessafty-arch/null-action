@@ -304,6 +304,10 @@ void ANACharacterBase::OnRep_Prone()
 void ANACharacterBase::HandleHealthChanged(float NewHealth, float Delta)
 {
 	ApplyGait(); // Limp starts/stops as health crosses the injury threshold.
+	if (Delta < -2.f)
+	{
+		NAAssets::SpawnEffect(this, UNAAssetSettings::Get()->Blood, GetActorLocation() + FVector(0.f, 0.f, 40.f)); // Real blood, if set.
+	}
 }
 
 void ANACharacterBase::SetGodMode(bool bNewGodMode)

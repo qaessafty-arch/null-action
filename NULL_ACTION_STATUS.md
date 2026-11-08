@@ -1,10 +1,33 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v2.1: Stage 6 presentation (main menu over the live world, intro, character studio, settings, pause) + real-asset slots (Project Settings → NULL-ACTION Assets; see Docs/REAL_ASSETS_GUIDE.md). Not yet built; v2.0 not yet built either. Last confirmed build: v1.3._
+_Last updated: 2026-11-08 — v2.2: realism hookup (weapon/building/crate models, sounds, ambience, music, Niagara effects, renderer tuned for photo-real assets). **v2.1.1 builds and runs on the owner's PC (confirmed)**, so v2.0 and v2.1 compile too. v2.2 not yet built._
+
+## v2.2: realism hookup (models, sound, effects, renderer)
+
+Status: **written, not yet compiled or tested (v2.2).**
+
+New slots in **Project Settings → Game → NULL-ACTION Assets** (all optional; empty = stand-in):
+- **Weapons:** a real model in the hand for each of the 5 weapons (the muzzle point moves to the tip of the model), plus fire and reload sounds.
+- **Building:** foundation, wall, doorway (keeps its working door), campfire (keeps its light, plus real flames if the Campfire Fire effect is set), loot crate.
+- **Sound:**
+  - Footsteps for every player: quieter crouched, silent prone or swimming.
+  - Bullet impacts.
+  - Creature growl/bite/death for every creature without its own.
+  - The boss roars when it wakes; a horse neighs when tamed.
+  - Looping day and night ambience that crossfades with the clock, and a rain bed that follows the weather.
+  - Menu music (fades in and out); a UI click.
+- **Effects (Niagara):** muzzle flash, bullet impact, blood on every hit, campfire flames, lightning (Storm power and Ember Storm), Ash Rebirth burst at the shrine.
+- **Renderer:** TSR anti-aliasing, Nanite, virtual textures, a wider auto-exposure range and Lumen mesh-distance-field tracing. Lumen GI/reflections and virtual shadows were already on. The Niagara plugin is enabled.
+- **Docs/REAL_ASSETS_GUIDE.md** has a new section on these slots and a prioritised free "shopping list".
+
+Honest limits:
+- No assets are included: licensed assets can't be downloaded from here, and buying anything needs approval.
+- The creature growl is heard by the host only (bite and death sounds play for everyone).
+- Footsteps are one sound for every surface.
 
 ## v2.1: Stage 6 presentation, part 1 + real-asset slots
 
-Status: **written, not yet compiled or tested (v2.1).** v2.0 hasn't been built yet either, so the first build may report errors from both.
+Status: **builds and runs on the owner's PC (v2.1.1, 2026-11-08).** Checklist items not yet reported individually.
 
 - **Intro (first launch):** a camera journey through the live world (the lake, the Ash Crater, the Old Cabin, an Ash Shrine) with story captions, ending in the NULL-ACTION title reveal.
   - Letterbox bars. **Space or click skips it.**
@@ -51,7 +74,7 @@ Honest limits:
 
 ## v2.0: the big Stage 5 update (owner asked for one massive update)
 
-Status: **written, not yet compiled or tested (v2.0).** This is a large batch, so the first build may well report errors; send the log and they'll be fixed quickly.
+Status: **compiles and runs (confirmed with the v2.1.1 build on the owner's PC).** Gameplay checklist not yet reported.
 
 ### Survival
 - **Fatigue (REST bar):** drains over ~50 minutes awake, faster when sprinting. Below 25% stamina recovers slowly (worse at 0). Restore it by standing still beside a campfire; an Ember Tonic restores it fully.

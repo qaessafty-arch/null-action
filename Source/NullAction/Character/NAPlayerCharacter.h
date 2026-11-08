@@ -298,6 +298,7 @@ private:
 	float LastReviveTapTime = -100.f;
 	float NextSpeedRefresh = 0.f;
 	float LastSpeedMultiplier = 1.f;
+	float FootstepDistance = 0.f;
 	bool bWasCloaked = false;
 	bool bInventoryOpen = false;
 	int32 InventoryTab = 0;

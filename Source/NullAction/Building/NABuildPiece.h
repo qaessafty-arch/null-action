@@ -59,6 +59,7 @@ protected:
 
 	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> Parts;
 	UPROPERTY() TObjectPtr<UPointLightComponent> FireLight;
+	void AddFireEffects();
 	UPROPERTY() TObjectPtr<ANADoor> SpawnedDoor;
 
 private:

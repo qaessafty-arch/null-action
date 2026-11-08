@@ -10,6 +10,7 @@ class USkyAtmosphereComponent;
 class UExponentialHeightFogComponent;
 class UVolumetricCloudComponent;
 class UPostProcessComponent;
+class UAudioComponent;
 class ANAPrecipitation;
 class USoundBase;
 
@@ -129,6 +130,13 @@ private:
 	ENAWeather PickNextWeather() const;
 
 	UPROPERTY(Transient) TObjectPtr<ANAPrecipitation> Precipitation;
+
+	/** Local ambience (Project Settings -> NULL-ACTION Assets -> Sound): day/night beds and rain, crossfaded. */
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> AmbientDayAudio;
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> AmbientNightAudio;
+	UPROPERTY(Transient) TObjectPtr<UAudioComponent> RainAudio;
+	void UpdateAmbience(float DeltaSeconds);
+	float NightBlend = 0.f;
 
 	float LocalTimeOfDay = 9.f;
 	float NextWeatherChangeTime = 0.f;

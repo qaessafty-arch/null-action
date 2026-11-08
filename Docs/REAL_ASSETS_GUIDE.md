@@ -86,9 +86,32 @@ That is a two-minute edit; send a screenshot if you get stuck.
 
 ---
 
-## 4. What stays to do after models are in
-- **Sounds:** footsteps, creature calls, weapons. The code already has sound slots on weapons and creatures (`FireSound`, `GrowlSound`, ...).
-- **Particle effects** (Niagara): muzzle flash, blood, embers, lightning.
+## 4. Weapons, buildings, sounds and effects (v2.2)
+
+Same settings page, more sections:
+
+| Section | Slots | What to look for on Fab (filter: Free) |
+|---|---|---|
+| **Weapons** | Pistol, Assault Rifle, Shotgun, Sniper Rifle, Hunting Bow: each has **Model** (static mesh), **Fire Sound** and **Reload Sound** | "pistol", "AK", "rifle", "shotgun", "sniper", "bow" static meshes. Barrel along +X; if it points the wrong way set **Rotation** Yaw 90 / -90 / 180. Start with **Scale** 1. |
+| **Building** | Foundation (3x3 m floor), Wall (3 m wide, 2.8 m high), Doorway (wall with an opening; the door is added automatically), Campfire, Loot Crate | "wooden wall", "log cabin modular", "campfire", "wooden crate". Modular survival or medieval building packs fit best. Tune Offset/Scale until it fills the build grid. |
+| **Sound** | Footstep, Bullet Impact, Creature Growl/Bite/Death, Boss Roar, Horse Neigh, Ambient Day, Ambient Night, Rain Loop, Menu Music, UI Click | Fab and Epic samples have free sound packs: search "footsteps", "gunshot", "creature roar", "forest ambience", "night ambience", "rain loop", "UI click". The engine's Starter Content also includes some sounds. |
+| **Effects** (Niagara) | Muzzle Flash, Bullet Impact FX, Blood, Campfire Fire, Lightning Strike, Ash Rebirth | Fab has free Niagara packs: search "Niagara muzzle flash", "impact", "blood", "fire", "lightning", "magic burst". The free **Niagara examples** content from Epic also works. |
+
+Everything stays optional: fill what you have, and the rest keeps the stand-ins.
+
+## 5. A realistic "shopping list" (all free), in the order that matters most
+1. **Third Person pack** (human player, already animated).
+2. **Megascans**: 1 ground, 3 rocks, 2–3 trees, grass, bush, filled into **Environment**.
+3. **Forest and night ambience + rain loop + footsteps**, into **Sound**. Sound makes the biggest jump in "realism" after the visuals.
+4. **One rifle and one pistol model + gunshot sounds**, into **Weapons**.
+5. **Muzzle flash, impact and blood Niagara**, into **Effects**.
+6. **Wolf, deer and horse** animated animals, into **Creatures**.
+7. **Modular wooden building pieces + campfire + crate**, into **Building**.
+8. **A dragon/wyvern** (Ash Glider) and **a large monster** (Boss).
+
+The project's renderer is also tuned for photo-real assets: Lumen lighting, virtual shadow maps, Nanite, virtual textures (for Megascans), TSR anti-aliasing and a wider auto-exposure range. The first launch after this update may compile shaders for a few minutes; that's normal.
+
+## 6. What stays to do after models are in
 - **Riding animations** for the player on horses and gliders.
 - **A sculpted logo and font:** drop a font asset in and the menus can use it.
 

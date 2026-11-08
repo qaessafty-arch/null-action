@@ -22,7 +22,8 @@ public class NullAction : ModuleRules
 			"NavigationSystem",
 			"GameplayTasks",
 			"ProceduralMeshComponent",
-			"DeveloperSettings"
+			"DeveloperSettings",
+			"Niagara"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

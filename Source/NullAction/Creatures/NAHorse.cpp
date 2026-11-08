@@ -475,6 +475,10 @@ void ANAHorse::OnRep_Gallop()
 
 void ANAHorse::OnRep_Tamed()
 {
+	if (bTamed && HasActorBegunPlay())
+	{
+		NAAssets::PlayAt(this, UNAAssetSettings::Get()->HorseNeigh, GetActorLocation());
+	}
 	for (UStaticMeshComponent* Part : TackParts)
 	{
 		Part->SetVisibility(bTamed);

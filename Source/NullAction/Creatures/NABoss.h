@@ -115,4 +115,5 @@ private:
 	float LastTargetSeenTime = 0.f;
 	float GaitPhase = 0.f;
 	float SlamAnimStart = -100.f;
+	ENABossState LastSeenState = ENABossState::Dormant;
 };

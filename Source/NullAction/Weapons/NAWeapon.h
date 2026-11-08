@@ -92,6 +92,9 @@ public:
 	void StopFire();
 	void RequestReload();
 
+	/** Real-asset slot for this weapon type (Project Settings -> NULL-ACTION Assets -> Weapons). */
+	const struct FNAWeaponAssets& GetAssets() const;
+
 	/** Server only. */
 	void OnEquipped();
 	void OnUnequipped();
