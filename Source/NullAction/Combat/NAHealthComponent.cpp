@@ -14,6 +14,7 @@ void UNAHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UNAHealthComponent, Health);
+	DOREPLIFETIME(UNAHealthComponent, MaxHealth);
 	DOREPLIFETIME(UNAHealthComponent, Armor);
 	DOREPLIFETIME(UNAHealthComponent, bDead);
 	DOREPLIFETIME(UNAHealthComponent, bDowned);

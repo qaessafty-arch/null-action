@@ -1,5 +1,6 @@
 #include "Weapons/NAWeapon.h"
 #include "Creatures/NACreature.h"
+#include "Creatures/NABoss.h"
 
 #include "NullAction.h"
 #include "Character/NACharacterBase.h"
@@ -271,7 +272,7 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 		const float Multiplier = Zone == ENAHitZone::Head ? Stats.HeadshotMultiplier
 			: Zone == ENAHitZone::Limb ? Stats.LimbMultiplier : 1.f;
 
-		const float HuntBonus = Hit.GetActor() && Hit.GetActor()->IsA<ANACreature>() ? Stats.CreatureDamageMultiplier : 1.f;
+		const float HuntBonus = Hit.GetActor() && (Hit.GetActor()->IsA<ANACreature>() || Hit.GetActor()->IsA<ANABoss>()) ? Stats.CreatureDamageMultiplier : 1.f;
 		const float Dealt = UGameplayStatics::ApplyPointDamage(Hit.GetActor(), Stats.Damage * Multiplier * HuntBonus, ToTarget, Hit,
 			Character->GetController(), this, UDamageType::StaticClass());
 

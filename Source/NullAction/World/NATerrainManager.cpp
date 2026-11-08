@@ -43,6 +43,7 @@ namespace NATerrainDetail
 	ESurface SurfaceAt(float X, float Y, float Height, const FVector& Normal)
 	{
 		if (Height < NATerrain::WaterLevel() + 60.f) { return Sand; }
+		if (FVector2D::Distance(FVector2D(X, Y), NATerrain::CraterCenter()) < 3000.f) { return Rock; } // Ash floor.
 		if (Height > 5200.f + Noise(X, Y, 3000.f, FVector2D(5.3f, 1.7f)) * 600.f) { return Snow; }
 		if (Normal.Z < 0.78f) { return Rock; }
 		return NATerrain::ForestDensityAt(X, Y) > 0.5f ? ForestFloor : Grass;
@@ -73,6 +74,12 @@ float NATerrain::HeightAt(float X, float Y)
 	const float CabinDistance = FVector2D::Distance(FVector2D(X, Y), CabinCenter());
 	Height = FMath::Lerp(Height, -5.f, 1.f - SmoothStep(1100.f, 2200.f, CabinDistance));
 
+	// Ash Crater: a flat bowl with a ring-shaped rim (boss arena).
+	const float CraterDistance = FVector2D::Distance(FVector2D(X, Y), CraterCenter());
+	Height = FMath::Lerp(Height, -120.f, 1.f - SmoothStep(2400.f, 3800.f, CraterDistance));
+	const float RimOffset = (CraterDistance - 3200.f) / 450.f;
+	Height += 380.f * FMath::Exp(-RimOffset * RimOffset);
+
 	return Height;
 }
 
@@ -92,6 +99,7 @@ float NATerrain::ForestDensityAt(float X, float Y)
 	const float ArenaDistance = FMath::Max(FMath::Abs(X), FMath::Abs(Y));
 	Density *= SmoothStep(5000.f, 7000.f, ArenaDistance);
 	Density *= SmoothStep(1800.f, 2600.f, FVector2D::Distance(FVector2D(X, Y), CabinCenter()));
+	Density *= SmoothStep(3600.f, 4400.f, FVector2D::Distance(FVector2D(X, Y), CraterCenter())); // Nothing grows in the crater.
 	return FMath::Clamp(Density, 0.f, 1.f);
 }
 
@@ -101,6 +109,7 @@ FString NATerrain::RegionAt(const FVector& Location)
 	const float Y = Location.Y;
 	if (FMath::Max(FMath::Abs(X), FMath::Abs(Y)) < 4100.f)                       { return TEXT("Test Arena"); }
 	if (FVector2D::Distance(FVector2D(X, Y), CabinCenter()) < 1800.f)            { return TEXT("Old Cabin"); }
+	if (FVector2D::Distance(FVector2D(X, Y), CraterCenter()) < 3600.f)           { return TEXT("Ash Crater"); }
 	if (FVector2D::Distance(FVector2D(X, Y), LakeCenter()) < 9500.f)             { return TEXT("Mirror Lake"); }
 	if (X > 16000.f || HeightAt(X, Y) > 2500.f)                                  { return TEXT("Grey Peaks"); }
 	if (ForestDensityAt(X, Y) > 0.55f)                                           { return TEXT("Whispering Pines"); }

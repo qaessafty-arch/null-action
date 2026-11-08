@@ -78,7 +78,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Health")
+	UPROPERTY(EditDefaultsOnly, Replicated, Category = "NullAction|Health")
 	float MaxHealth = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Health")

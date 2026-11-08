@@ -312,7 +312,7 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 1.1"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 1.2"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);

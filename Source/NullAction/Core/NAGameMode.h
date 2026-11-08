@@ -51,6 +51,12 @@ public:
 	/** Called by creatures when they die; a new one returns to the den later. */
 	void OnCreatureKilled(ANACreature* Creature, AController* Killer = nullptr);
 
+	/** Called by the boss when it dies; it returns after BossRespawnSeconds. */
+	void OnBossKilled(class ANABoss* Boss, AController* Killer);
+
+	/** Server: a system message to every player. */
+	void AnnounceToAll(const FString& Text) const { BroadcastSystemMessage(Text); }
+
 	/** Applies to every enemy now and to future spawns. */
 	void SetEnemyDifficulty(ENADifficulty NewDifficulty);
 	ENADifficulty GetEnemyDifficulty() const { return EnemyDifficulty; }
@@ -72,6 +78,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
 	float CreatureRespawnSeconds = 45.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
+	float BossRespawnSeconds = 600.f;
 
 	/** On a listen server (or offline) the person hosting is the owner. On a dedicated server, owners come from Saved/Server/Roles.ini. */
 	UPROPERTY(Config, EditDefaultsOnly, Category = "NullAction|Security")
@@ -99,6 +108,8 @@ private:
 	void SpawnEnemy(int32 PostIndex);
 	void SpawnCreature();
 	void SpawnShrines(const FTransform& ArenaTransform);
+	void SpawnBoss();
+	FVector BossLairLocation = FVector::ZeroVector;
 	/** Server: a player died. Rebirth at their shrine (keeping items) or drop everything where they fell. Returns true for a rebirth. */
 	bool HandlePlayerDeathItems(ANACharacterBase* Victim, APlayerController* PlayerController);
 	float ServerNow() const;

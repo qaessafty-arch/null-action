@@ -24,6 +24,8 @@ namespace NATerrain
 	inline float WaterLevel() { return -300.f; }
 	inline FVector2D LakeCenter() { return FVector2D(-15000.f, 15000.f); }
 	inline FVector2D CabinCenter() { return FVector2D(7000.f, -1500.f); }
+	/** Ash Crater: the Ashen Behemoth's lair (flat ash floor with a raised rim). */
+	inline FVector2D CraterCenter() { return FVector2D(12500.f, 6500.f); }
 }
 
 USTRUCT()

@@ -7,6 +7,7 @@
 #include "Character/NACharacterBase.h"
 #include "Combat/NAHealthComponent.h"
 #include "Core/NAPlayerController.h"
+#include "Core/NAPlayerState.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Inventory/NAItems.h"
@@ -207,6 +208,20 @@ void UNAInventoryComponent::Use(FName ItemId)
 	{
 		bUsed = ANABait::Place(Character) != nullptr;
 		if (!bUsed) { Tell(TEXT("Can't drop bait here.")); return; }
+	}
+	else if (ItemId == TEXT("AshenAegis"))
+	{
+		bUsed = Health != nullptr;
+		if (Health)
+		{
+			Health->Heal(10000.f);
+			Health->AddArmor(10000.f);
+		}
+		const APawn* Pawn = Cast<APawn>(Character);
+		if (ANAPlayerState* State = Pawn ? Pawn->GetPlayerState<ANAPlayerState>() : nullptr)
+		{
+			State->SetAshCharges(State->GetAshCharges() + 1);
+		}
 	}
 	else if (ItemId == TEXT("EmberTonic"))
 	{

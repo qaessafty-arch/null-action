@@ -2,6 +2,34 @@
 
 _Last updated: 2026-11-08 — v1.1: Milestone 5C (hunting gear: bow, arrows, knife/skinning, snare traps, bait, creature tracks) written, not yet built. v1.0.1 (5B) sent; build result not yet reported. v0.8 confirmed running. 3B waits on the owner's Epic/Google developer accounts._
 
+## Milestone 5D: first boss, the ASHEN BEHEMOTH (Stage 5, part 4)
+
+Status: **written, not yet compiled or tested (v1.2).**
+
+- **Ash Crater** (new region, east of the arena and north of the Old Cabin, around X 12500, Y 6500): a flat ash bowl with a raised rim, no trees.
+- **Ashen Behemoth**: a ~5 m armored four-legged beast built from engine shapes (an original design). It sleeps until a player comes within 22 m or shoots it, then everyone gets the message "The ASHEN BEHEMOTH has awoken".
+  - Health 1800 + 900 per extra living player (it scales when it wakes).
+  - **Armor:** body hits do 50%, legs 70%. **Weak points:** the glowing **ember core on its back** and the **head** (count as headshots). The bow's creature bonus applies.
+  - **Phase 1:** *Ground Slam*, a red circle (6.5 m) under it, 1.2 s warning, then 45 damage and a knock-back. *Charge* from 9–30 m away, 40 damage and a knock-back on contact. It turns slowly, so get behind it.
+  - **Phase 2 (below 60%):** adds *Ember Rain*, three red circles on and around the target (one where you're running), 35 damage each.
+  - **Phase 3 (below 25%):** **ENRAGED**, faster, shorter warnings, harder slams.
+  - **Leash:** if it goes 60 m from its lair or finds nobody for 10 s, it walks home, heals fully and sleeps again.
+  - **Rewards:** Behemoth Heart (unique), 3 Ember Fangs, 4 Ash Hide, 2 Ammo Packs, meat and scrap, spread around the body. Kill feed and a server-wide message. It returns 10 minutes later.
+  - **Ashen Aegis** (new recipe at a campfire: Behemoth Heart + 3 Ash Hide + 4 Scrap): use for full health, full armor and +1 Ash charge.
+- HUD: boss health bar with phase name, a weak-point hint, and "!! GET OUT OF THE RED CIRCLE" when you stand in a telegraph. The Hunter's Tracking Pulse marks the boss.
+- Max health now replicates to clients (needed for correct boss and health bars).
+
+Honest limits: the boss walks straight at its target (no pathfinding around big obstacles; the crater is open ground on purpose); no boss music or sounds yet; shape-built body until a real model exists.
+
+### 5D test checklist
+- [ ] Builds; HUD `dev build 1.2`; region name "ASH CRATER" when you walk there (head east-north-east from the arena)
+- [ ] Get close → wake message, boss bar appears
+- [ ] Red circle under it → step out before it lands; standing in it hurts and throws you
+- [ ] Shooting the glowing back core shows HEADSHOT damage; body shots do much less
+- [ ] Below 60% → Ember Rain circles; below 25% → ENRAGED
+- [ ] Run far away → it walks home and heals
+- [ ] Kill it (owner: `NAGod` helps) → loot ring, kill feed, server message; craft Ashen Aegis at a campfire
+
 ## Milestone 5C: hunting equipment and tracking (Stage 5, part 3)
 
 Status: **written, not yet compiled or tested (v1.1).**

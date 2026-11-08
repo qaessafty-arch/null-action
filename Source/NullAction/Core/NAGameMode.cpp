@@ -25,6 +25,7 @@
 #include "Interaction/NANote.h"
 #include "Interaction/NAResourceNode.h"
 #include "Interaction/NAAshShrine.h"
+#include "Creatures/NABoss.h"
 #include "Core/NAPlayerState.h"
 #include "Combat/NAHealthComponent.h"
 #include "GameFramework/GameStateBase.h"
@@ -317,6 +318,44 @@ void ANAGameMode::SpawnArenaContent()
 	SpawnCreature();
 
 	SpawnShrines(ArenaTransform);
+
+	// The Ash Crater, east of the arena and north of the cabin: the Ashen Behemoth's lair.
+	{
+		const FVector2D Crater = NATerrain::CraterCenter();
+		BossLairLocation = FVector(Crater.X, Crater.Y, NATerrain::HeightAt(Crater.X, Crater.Y) + 220.f);
+		SpawnBoss();
+	}
+}
+
+void ANAGameMode::SpawnBoss()
+{
+	const FTransform Where(FRotator(0.f, 200.f, 0.f), BossLairLocation);
+	if (ANABoss* Boss = GetWorld()->SpawnActorDeferred<ANABoss>(ANABoss::StaticClass(), Where, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Boss->SetLairLocation(BossLairLocation);
+		Boss->FinishSpawning(Where);
+	}
+}
+
+void ANAGameMode::OnBossKilled(ANABoss* Boss, AController* Killer)
+{
+	if (!Boss)
+	{
+		return;
+	}
+	if (ANAPlayerState* KillerState = Killer ? Killer->GetPlayerState<ANAPlayerState>() : nullptr)
+	{
+		KillerState->AddKill();
+	}
+	if (ANAGameState* State = GetGameState<ANAGameState>())
+	{
+		State->BroadcastKill(DisplayNameOf(nullptr, Killer), ANABoss::BossName());
+	}
+	BroadcastSystemMessage(FString::Printf(TEXT("%s has slain the ASHEN BEHEMOTH! Its heart lies in the Ash Crater."), *DisplayNameOf(nullptr, Killer)));
+	Boss->SetLifeSpan(120.f);
+	FTimerHandle Handle;
+	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnBoss, BossRespawnSeconds, false);
 }
 
 void ANAGameMode::SpawnShrines(const FTransform& ArenaTransform)

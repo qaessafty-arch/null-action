@@ -38,6 +38,9 @@ namespace
 			Item(TEXT("HuntingKnife"), TEXT("Hunting Knife"), C::Resource,   1,  FLinearColor(0.7f, 0.7f, 0.75f), TEXT("Carry it to skin creature carcasses (E) for extra hide and meat.")),
 			Item(TEXT("SnareTrap"),    TEXT("Snare Trap"),    C::Consumable, 5,  FLinearColor(0.35f, 0.35f, 0.3f), TEXT("Use: set a trap at your feet. Snaps shut on creatures and enemies.")),
 			Item(TEXT("Bait"),         TEXT("Meat Bait"),     C::Consumable, 5,  FLinearColor(0.7f, 0.2f, 0.15f), TEXT("Use: drop bait. Hungry creatures nearby come to eat it.")),
+			// Boss trophies
+			Item(TEXT("BehemothHeart"), TEXT("Behemoth Heart"), C::Resource,   3, FLinearColor(1.f, 0.25f, 0.05f), TEXT("Still burning. Trophy of the Ashen Behemoth. Crafts the Ashen Aegis.")),
+			Item(TEXT("AshenAegis"),    TEXT("Ashen Aegis"),    C::Consumable, 3, FLinearColor(0.9f, 0.35f, 0.1f), TEXT("Use: full health, full armor, +1 Ash charge.")),
 			// Placeables
 			Item(TEXT("WoodFoundation"), TEXT("Wood Foundation"), C::Placeable, 20, FLinearColor(0.3f, 0.18f, 0.08f), TEXT("3 x 3 m floor. Snaps to a grid.")),
 			Item(TEXT("WoodWall"),       TEXT("Wood Wall"),       C::Placeable, 20, FLinearColor(0.3f, 0.18f, 0.08f), TEXT("Wall on a grid edge.")),
@@ -69,6 +72,7 @@ namespace
 			Recipe(TEXT("ArrowBundle"),    1, { { TEXT("Wood"), 2 }, { TEXT("Stone"), 1 } }),
 			Recipe(TEXT("HuntingKnife"),   1, { { TEXT("ScrapMetal"), 2 }, { TEXT("Wood"), 1 } }),
 			Recipe(TEXT("SnareTrap"),      1, { { TEXT("ScrapMetal"), 3 }, { TEXT("Wood"), 2 } }),
+			Recipe(TEXT("AshenAegis"),     1, { { TEXT("BehemothHeart"), 1 }, { TEXT("AshHide"), 3 }, { TEXT("ScrapMetal"), 4 } }, true),
 			Recipe(TEXT("Bait"),           1, { { TEXT("RawMeat"), 1 }, { TEXT("Berries"), 2 } }),
 			Recipe(TEXT("WoodFoundation"), 1, { { TEXT("Wood"), 8 } }),
 			Recipe(TEXT("WoodWall"),       1, { { TEXT("Wood"), 5 } }),

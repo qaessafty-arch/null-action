@@ -6,6 +6,7 @@
 #include "Combat/NAHealthComponent.h"
 #include "Core/NAPlayerState.h"
 #include "Creatures/NACreature.h"
+#include "Creatures/NABoss.h"
 #include "Hunting/NACreatureTrack.h"
 #include "AI/NAEnemySoldier.h"
 #include "Engine/Canvas.h"
@@ -144,6 +145,34 @@ void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH
 		}
 	}
 
+	// ----- Boss: health bar at the top, and "get out" when you stand in a telegraph -----
+	for (TActorIterator<ANABoss> It(World); It; ++It)
+	{
+		if (It->GetBossState() != ENABossState::Awake || FVector::Dist(It->GetActorLocation(), Player->GetActorLocation()) > 7000.f)
+		{
+			continue;
+		}
+		const UNAHealthComponent* BossHealth = It->GetHealthComponent();
+		const float Fraction = BossHealth ? BossHealth->GetHealth() / FMath::Max(1.f, BossHealth->GetMaxHealth()) : 0.f;
+		const float BarW = FMath::Min(640.f, ScreenW - 80.f);
+		const float BarX = CenterX - BarW * 0.5f;
+		DrawRect(PowerDim, BarX - 6.f, 62.f, BarW + 12.f, 44.f);
+		const FString Title = FString::Printf(TEXT("ASHEN BEHEMOTH%s"), It->GetPhase() >= 3 ? TEXT("  -  ENRAGED") : It->GetPhase() == 2 ? TEXT("  -  EMBER RAIN") : TEXT(""));
+		DrawText(Title, AshColor, BarX, 64.f, nullptr, 1.05f);
+		DrawRect(FLinearColor(0.1f, 0.02f, 0.02f, 0.9f), BarX, 84.f, BarW, 14.f);
+		DrawRect(It->GetPhase() >= 3 ? FLinearColor(1.f, 0.15f, 0.05f) : FLinearColor(0.85f, 0.3f, 0.05f), BarX, 84.f, BarW * FMath::Clamp(Fraction, 0.f, 1.f), 14.f);
+		DrawText(TEXT("Weak points: the glowing core on its back, and the head"), PowerText, BarX, 100.f, nullptr, 0.8f);
+		for (int32 Index = 0; Index < It->NumWarnings(); ++Index)
+		{
+			if (It->GetWarningEnd(Index) > ServerNow &&
+				FVector::Dist2D(It->GetWarningLocation(Index), Player->GetActorLocation()) <= It->GetWarningRadius(Index))
+			{
+				DrawText(TEXT("!! GET OUT OF THE RED CIRCLE"), PowerAccent, CenterX - 140.f, CenterY - 160.f, nullptr, 1.5f);
+				break;
+			}
+		}
+	}
+
 	// ----- Downed teammates: show where they are -----
 	for (TActorIterator<ANAPlayerCharacter> It(World); It; ++It)
 	{
@@ -181,6 +210,10 @@ void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH
 		for (TActorIterator<ANACreature> It(World); It; ++It)
 		{
 			if (!It->IsDead()) { Mark(*It, AshColor, TEXT("CREATURE")); }
+		}
+		for (TActorIterator<ANABoss> It(World); It; ++It)
+		{
+			if (!It->IsDead()) { Mark(*It, PowerAccent, TEXT("BOSS")); }
 		}
 		// Fresh tracks within 30 m light up, so the Hunter can follow the trail.
 		for (TActorIterator<ANACreatureTrack> It(World); It; ++It)
