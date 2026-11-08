@@ -20,3 +20,6 @@ Platforms/
 *.xcworkspace
 Plugins/*/Binaries/
 Plugins/*/Intermediate/
+
+# Local archives (e.g. project ZIPs sent to the owner)
+*.zip
