@@ -164,7 +164,7 @@ Honest limits: no team system yet (any player can revive or carry any other); th
 
 ## Milestone 5A: inventory, gathering, crafting and base building (Stage 5, part 1)
 
-Status: **written, not yet compiled or tested (v0.9).**
+Status: **compiles (confirmed with the v1.3 build on owner's PC); gameplay checklist not yet reported.**
 
 | Feature | How it works |
 |---|---|
