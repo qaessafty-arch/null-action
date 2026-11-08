@@ -1,6 +1,35 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.7: Milestone 4A (day/night + dynamic weather) written, not yet built. v0.6 (Stages 1-2 + 3A) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v0.8: Milestone 4B (streaming open world, cabin with interiors) written. v0.7 and v0.8 not yet built; v0.6 (Stages 1-2 + 3A) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 4B: streaming open world and the Old Cabin (Stage 4, part 2)
+
+Status: **written, not yet compiled or tested (v0.8).**
+
+| Feature | How it works |
+|---|---|
+| Open world | Endless generated terrain around the arena, built in 64 m chunks that **stream in around each player** (and, on the server, every AI) and are removed when nobody is near. Same maths on every machine → identical ground in multiplayer, nothing sent over the network. Uses the engine's ProceduralMeshComponent plugin. |
+| Regions | **Ashen Grassland** (rolling hills), **Whispering Pines** (dense forest, south-west), **Grey Peaks** (ridged mountains with rock and snow caps, north / +X), **Mirror Lake** (swimmable lake, north-west), **Old Cabin**. Region name shows under the clock. |
+| Surfaces | Grass, dark forest floor, rock on steep slopes, snow on peaks, sand/mud at the lake. |
+| Trees and rocks | Pines (trunk + layered canopy) and boulders placed from a deterministic hash; trunks and rocks have collision (also on the server). |
+| Mirror Lake | Uses the same swim/dive/oxygen/cold systems as the pool. |
+| **The Old Cabin** (east, just outside the arena wall) | 10 × 7 m log cabin: **living room** (table, chairs, bench, shelf, fireplace), **bedroom** (bed, wardrobe, nightstand), **storage** (racks, barrels); windows, roof, chimney, porch, warm interior lights. |
+| Doors | Hinged, swing away from you, replicated (everyone sees them open), block bullets and players. Front door and storage door. |
+| Loot crate | Server rolls loot (ammo + a random supply); lid stays open; refills after 5 min. |
+| Story note | A journal on the table starts the NULL-ACTION story (the Array, the ash sky, the first "Rebirth", the creature at the lake, the facility in the north). |
+| Leaving the arena | Vault/climb over any arena wall with **Space**. |
+
+Honest limits: this is a runtime-generated world, not a hand-sculpted Unreal Landscape with World Partition. Those need editor work in your copy of the project (I can guide you), and they're the route to AAA-quality terrain, foliage and Nanite assets. Trees and the cabin are built from simple shapes until licensed or original art is imported. No HLOD/impostors yet (view distance ~320 m). Rain still falls indoors.
+
+### 4B test checklist
+- [ ] HUD says `dev build 0.8`; region name under the clock ("TEST ARENA")
+- [ ] Vault over the east wall (toward the cabin side) → "OLD CABIN"; open the door with E; walk through all 3 rooms
+- [ ] Read the note on the table (text appears in the chat area); search the crate in storage; take the medkit in the bedroom
+- [ ] Doors: a second player sees them open/close
+- [ ] Walk/fly (`NAFly`) out over hills: terrain and forest keep appearing ahead and disappearing behind
+- [ ] Find Grey Peaks (snow on top), Whispering Pines (dense forest), Mirror Lake (swim in it)
+- [ ] Trees and boulders block you
+- [ ] Frame rate stays acceptable while flying around (`stat fps` in the console)
 
 ## Milestone 4A: day/night cycle and dynamic weather (Stage 4, part 1)
 

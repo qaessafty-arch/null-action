@@ -18,11 +18,11 @@ Source/
     Core/       Game mode (+ NAGameMode_Online: roles, bans, chat, admin, records), game/player state, player controller, HUD
     Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
     Animation/  UNAAnimInstance — native parent for every character AnimBP
-    World/      ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust)
+    World/      ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust), ANATerrainManager (streamed procedural terrain + forest), ANACabin
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component
-    Interaction/ INAInteractable interface, weapon and supply pickups
+    Interaction/ INAInteractable interface, weapon/supply pickups, doors, loot crates, readable notes
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
     Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
 Docs/                   Architecture and decisions

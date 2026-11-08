@@ -18,6 +18,11 @@
 #include "World/NATestArena.h"
 #include "World/NAWaterVolume.h"
 #include "World/NAWorldEnvironment.h"
+#include "World/NATerrainManager.h"
+#include "World/NACabin.h"
+#include "Interaction/NADoor.h"
+#include "Interaction/NALootContainer.h"
+#include "Interaction/NANote.h"
 
 ANAGameMode::ANAGameMode()
 {
@@ -216,6 +221,61 @@ void ANAGameMode::SpawnArenaContent()
 
 	// Water for the diving pool (back-right corner). Surface at 2.8 m, matching the pool walls.
 	World->SpawnActor<ANAWaterVolume>(ANAWaterVolume::StaticClass(), At(FVector(-2600.f, -2600.f, 140.f)), Params);
+
+	// ----- Open world beyond the arena walls (vault over a wall with Space) -----
+	World->SpawnActor<ANATerrainManager>(ANATerrainManager::StaticClass(), FTransform::Identity, Params);
+
+	// Mirror Lake (north-west): surface at the terrain's water level.
+	{
+		const FVector2D Lake = NATerrain::LakeCenter();
+		const float Surface = NATerrain::WaterLevel();
+		const FTransform LakeTransform(FRotator::ZeroRotator, FVector(Lake.X, Lake.Y, Surface - 400.f));
+		if (ANAWaterVolume* LakeWater = World->SpawnActorDeferred<ANAWaterVolume>(ANAWaterVolume::StaticClass(), LakeTransform,
+			nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+		{
+			LakeWater->SetExtent(FVector(9000.f, 9000.f, 400.f));
+			LakeWater->FinishSpawning(LakeTransform);
+		}
+	}
+
+	// The Old Cabin, just outside the east wall, with its door, crate, note and medkit.
+	{
+		const FVector2D CabinXY = NATerrain::CabinCenter();
+		const FTransform CabinTransform(FRotator(0.f, 180.f, 0.f), FVector(CabinXY.X, CabinXY.Y, 0.f)); // Front door faces the arena.
+		if (ANACabin* Cabin = World->SpawnActor<ANACabin>(ANACabin::StaticClass(), CabinTransform, Params))
+		{
+			World->SpawnActor<ANADoor>(ANADoor::StaticClass(), Cabin->FrontDoorTransform(), Params);
+			if (ANADoor* StorageDoor = World->SpawnActorDeferred<ANADoor>(ANADoor::StaticClass(), Cabin->StorageDoorTransform(),
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+			{
+				StorageDoor->Width = 100.f;
+				StorageDoor->FinishSpawning(Cabin->StorageDoorTransform());
+			}
+			World->SpawnActor<ANALootContainer>(ANALootContainer::StaticClass(), Cabin->CrateTransform(), Params);
+
+			if (ANANote* Note = World->SpawnActorDeferred<ANANote>(ANANote::StaticClass(), Cabin->NoteTransform(),
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+			{
+				Note->Title = TEXT("Journal of M. Varga, field technician, Site NULL");
+				Note->Lines = {
+					TEXT("Day 41. The Array ran a full cycle last night. Every light in the valley went out at once. Then the sky turned the colour of ash."),
+					TEXT("Day 43. Pellan walked back in from the treeline. We buried Pellan on Day 38."),
+					TEXT("He doesn't remember dying. There's grey dust in the creases of his skin that won't wash off. He calls it the Rebirth."),
+					TEXT("Day 47. Something is hunting near the lake at night. Long, low, eyes like coals. It isn't on any list."),
+					TEXT("If you're reading this: the facility is north, past the peaks. Don't trust anyone who's come back."),
+				};
+				Note->FinishSpawning(Cabin->NoteTransform());
+			}
+
+			if (ANASupplyPickup* Medkit = World->SpawnActorDeferred<ANASupplyPickup>(ANASupplyPickup::StaticClass(), Cabin->MedkitTransform(),
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+			{
+				Medkit->SupplyType = ENASupplyType::Medkit;
+				Medkit->Amount = 60.f;
+				Medkit->FinishSpawning(Cabin->MedkitTransform());
+			}
+		}
+	}
 
 	// Ash Stalker den in the far back-left corner (behind spawn, to the left).
 	CreatureDenLocation = ArenaTransform.TransformPosition(FVector(-2800.f, 2800.f, 80.f));

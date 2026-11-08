@@ -6,6 +6,7 @@
 #include "EngineUtils.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 
 ANAWaterVolume::ANAWaterVolume()
@@ -31,9 +32,28 @@ ANAWaterVolume::ANAWaterVolume()
 	Surface->SetRelativeScale3D(FVector(Extent.X * 2.f / 100.f, Extent.Y * 2.f / 100.f, 0.02f));
 }
 
+void ANAWaterVolume::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ANAWaterVolume, Extent);
+}
+
+void ANAWaterVolume::SetExtent(const FVector& NewExtent)
+{
+	Extent = NewExtent;
+	OnRep_Extent();
+}
+
+void ANAWaterVolume::OnRep_Extent()
+{
+	Surface->SetRelativeLocation(FVector(0.f, 0.f, Extent.Z));
+	Surface->SetRelativeScale3D(FVector(Extent.X * 2.f / 100.f, Extent.Y * 2.f / 100.f, 0.02f));
+}
+
 void ANAWaterVolume::BeginPlay()
 {
 	Super::BeginPlay();
+	OnRep_Extent();
 	if (UMaterialInstanceDynamic* MID = Surface->CreateAndSetMaterialInstanceDynamic(0))
 	{
 		MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.02f, 0.12f, 0.2f));

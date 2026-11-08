@@ -25,11 +25,19 @@ public:
 	/** Finds the water (if any) at a point in the world. */
 	static bool FindWaterAt(const UWorld* World, const FVector& Point, float& OutSurfaceZ);
 
+	/** Server: set the size before or after spawning (replicated to clients). */
+	void SetExtent(const FVector& NewExtent);
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere, Category = "NullAction|Water")
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Extent, Category = "NullAction|Water")
 	FVector Extent = FVector(660.f, 660.f, 140.f);
+
+	UFUNCTION()
+	void OnRep_Extent();
 
 	UPROPERTY(VisibleAnywhere, Category = "NullAction|Water")
 	TObjectPtr<UStaticMeshComponent> Surface;

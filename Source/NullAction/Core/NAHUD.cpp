@@ -16,6 +16,7 @@
 #include "Survival/NASurvivalComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "World/NAWorldEnvironment.h"
+#include "World/NATerrainManager.h"
 
 namespace
 {
@@ -203,6 +204,9 @@ void ANAHUD::DrawHUD()
 			Environment->IsNight() ? TEXT("   NIGHT") : TEXT(""));
 		DrawRect(Dim, CenterX - 120.f, 18.f, 240.f, 24.f);
 		DrawText(Clock, TextColor, CenterX - 105.f, 21.f, nullptr, 1.f);
+		// Region name under the clock.
+		const FString Region = NATerrain::RegionAt(Player->GetActorLocation());
+		DrawText(Region.ToUpper(), Accent, CenterX - Region.Len() * 4.5f, 46.f, nullptr, 0.95f);
 	}
 
 	// ----- Underwater tint -----
@@ -230,7 +234,7 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.7"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.8"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
