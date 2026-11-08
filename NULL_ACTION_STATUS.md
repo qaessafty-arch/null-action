@@ -1,10 +1,10 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.6: Milestone 3A (multiplayer foundation, owner/admin permissions) written. v0.5 (2D) and v0.6 not yet built; v0.4 runs on owner's PC._
+_Last updated: 2026-11-08 — v0.6 (Stages 1-2 complete + 3A) compiles and runs on owner's PC after adding the CoreOnline module. Next: 4A day/night + weather (3B waits on the owner's Epic/Google developer accounts)._
 
 ## Milestone 3A: multiplayer foundation and owner permissions (Stage 3, part 1)
 
-Status: **written, not yet compiled or tested (v0.6).** Details: [`Docs/MULTIPLAYER.md`](Docs/MULTIPLAYER.md).
+Status: ✅ **Compiles and runs on owner's PC (v0.6)**; owner reports it working. First build failed to link (`FUniqueNetIdWrapper::ToString`): fixed by adding the `CoreOnline` module. Per-item checklist and two-PC test results not given yet. Details: [`Docs/MULTIPLAYER.md`](Docs/MULTIPLAYER.md).
 
 | Feature | Status |
 |---|---|
@@ -35,7 +35,7 @@ Status: **written, not yet compiled or tested (v0.6).** Details: [`Docs/MULTIPLA
 
 ## Milestone 2D: advanced movement and environment survival (Stage 2, part 4)
 
-Status: **written, not yet compiled or tested (v0.5).**
+Status: ✅ **Compiles and runs on owner's PC (as part of v0.6)**; owner reports it working.
 
 | Feature | Controls | How it works |
 |---|---|---|
