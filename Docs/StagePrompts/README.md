@@ -11,7 +11,7 @@ These are the owner's development instructions, saved word for word. They are wo
 | 3 | [STAGE_3_ONLINE_MULTIPLAYER.md](STAGE_3_ONLINE_MULTIPLAYER.md) | Queued |
 | 4 | [STAGE_4_OPEN_WORLD.md](STAGE_4_OPEN_WORLD.md) | Queued |
 | 5 | [STAGE_5_SURVIVAL_HUNTING_POWERS.md](STAGE_5_SURVIVAL_HUNTING_POWERS.md) | Queued |
-| 6 | [STAGE_6_PRESENTATION_UI_CINEMATICS.md](STAGE_6_PRESENTATION_UI_CINEMATICS.md) | Queued. **The prompt's last sentence is cut off**; ask the owner for it. |
+| 6 | [STAGE_6_PRESENTATION_UI_CINEMATICS.md](STAGE_6_PRESENTATION_UI_CINEMATICS.md) | Queued |
 | 7 | [STAGE_7_PRODUCTION_AUDIT_RELEASE.md](STAGE_7_PRODUCTION_AUDIT_RELEASE.md) | Queued |
 
 Notes:

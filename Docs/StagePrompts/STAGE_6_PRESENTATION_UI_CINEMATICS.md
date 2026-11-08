@@ -545,6 +545,10 @@ Update NULL_ACTION_STATUS.md.
 Clearly document completed, tested, verified, and incomplete features.
 
 FINAL DIRECTIVE
-Make NULL-ACTION feel like a professionally developed
-
-[NOTE: the original prompt was cut off at this point when it was pasted. Ask the owner for the rest of the final directive before starting Stage 6.]
+Make NULL-ACTION feel like a professionally developed AAA game from the first second.
+Every screen, animation, sound, interaction, and transition must contribute to an immersive experience.
+Do not prioritize visual decoration over usability.
+Do not create fake functionality.
+Do not remove existing gameplay features.
+Build the complete presentation layer on top of the actual game systems.
+START DEVELOPMENT NOW.
