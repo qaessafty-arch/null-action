@@ -10,7 +10,9 @@ _Last updated: 2026-11-08 — Milestone 1 (project foundation + first playable c
 | Game mode + dev HUD load in Play | ✅ **Verified** |
 | Enhanced Input reaches the character (Shift → HUD shows Sprint) | ✅ **Verified** |
 | Test arena appears in an empty level | ✅ **Verified** after fix: arena, lighting, sky, shadows, pillars and wall render; player spawns on the floor with the stand-in body and third-person camera. (First run showed a bug: the editor's temporary PIE spawn point stopped the arena from building. Fixed in `Core/NAGameMode.cpp`; the first fix attempt used a header missing in 5.8, so it now matches the PIE start by class name.) |
-| Full movement checklist (walk/run/sprint speeds, jump boxes, crouch tunnel, stairs, ramp, camera collision, gamepad, 2-player PIE) | ⏳ Waiting for owner's results |
+| 2-player networked Play-In-Editor (listen server + client) | ✅ **Verified**: both players spawn in the same arena and see each other's body and facing direction |
+| Full movement checklist (walk/run/sprint speeds, jump boxes, crouch tunnel, stairs, ramp, camera collision) and remote sprint/crouch replication | ⏳ Waiting for owner's results |
+| Separate-process / two-PC dedicated server test | ⏳ Planned for Stage 3 |
 
 ## ⚠️ Read first: build state
 
