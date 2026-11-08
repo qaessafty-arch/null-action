@@ -32,6 +32,10 @@ public:
 	/** Server only. Returns the armor actually added. */
 	float AddArmor(float Amount);
 
+	/** Server only: when set, no damage of any kind is applied (owner God mode). */
+	void SetInvulnerable(bool bNewInvulnerable) { bInvulnerable = bNewInvulnerable; }
+	bool IsInvulnerable() const { return bInvulnerable; }
+
 	/** Set before play starts (e.g. in an owner's constructor) to change toughness. */
 	void SetMaxHealth(float NewMaxHealth) { MaxHealth = FMath::Max(1.f, NewMaxHealth); Health = MaxHealth; }
 
@@ -93,4 +97,5 @@ private:
 	void NotifyHealthChanged(float OldHealth);
 
 	float LastDamageTime = -100.f;
+	bool bInvulnerable = false;
 };

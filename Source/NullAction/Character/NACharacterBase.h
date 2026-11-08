@@ -70,6 +70,10 @@ public:
 	/** Server only: ignore all damage for a moment (dodge roll). */
 	void GrantInvulnerability(float Seconds);
 
+	/** Server only (owner/admin command): permanent invincibility until turned off. */
+	void SetGodMode(bool bNewGodMode);
+	bool IsGodMode() const { return bGodMode; }
+
 	// ----- Health -----
 
 	UFUNCTION(BlueprintPure, Category = "NullAction|Health")
@@ -150,6 +154,9 @@ protected:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Prone, BlueprintReadOnly, Category = "NullAction|Movement")
 	bool bIsProne = false;
+
+	UPROPERTY(Replicated)
+	bool bGodMode = false;
 
 	UFUNCTION()
 	void OnRep_Prone();

@@ -291,7 +291,7 @@ void ANACreature::HandleKilled(AActor* Victim, AController* Killer)
 {
 	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
 	{
-		GameMode->OnCreatureKilled(this);
+		GameMode->OnCreatureKilled(this, Killer);
 	}
 }
 

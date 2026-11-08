@@ -93,6 +93,7 @@ void ANACharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ANACharacterBase, CurrentWeapon);
 	DOREPLIFETIME(ANACharacterBase, bIsAiming);
 	DOREPLIFETIME(ANACharacterBase, bIsProne);
+	DOREPLIFETIME_CONDITION(ANACharacterBase, bGodMode, COND_OwnerOnly);
 }
 
 void ANACharacterBase::BeginPlay()
@@ -303,6 +304,18 @@ void ANACharacterBase::OnRep_Prone()
 void ANACharacterBase::HandleHealthChanged(float NewHealth, float Delta)
 {
 	ApplyGait(); // Limp starts/stops as health crosses the injury threshold.
+}
+
+void ANACharacterBase::SetGodMode(bool bNewGodMode)
+{
+	if (HasAuthority())
+	{
+		bGodMode = bNewGodMode;
+		if (HealthComponent)
+		{
+			HealthComponent->SetInvulnerable(bNewGodMode);
+		}
+	}
 }
 
 void ANACharacterBase::GrantInvulnerability(float Seconds)

@@ -1,6 +1,37 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.5: Milestone 2D (advanced movement) written; not yet built. v0.4 (2A + 2B + 2C) runs on owner's PC._
+_Last updated: 2026-11-08 — v0.6: Milestone 3A (multiplayer foundation, owner/admin permissions) written. v0.5 (2D) and v0.6 not yet built; v0.4 runs on owner's PC._
+
+## Milestone 3A: multiplayer foundation and owner permissions (Stage 3, part 1)
+
+Status: **written, not yet compiled or tested (v0.6).** Details: [`Docs/MULTIPLAYER.md`](Docs/MULTIPLAYER.md).
+
+| Feature | Status |
+|---|---|
+| Player state: name, kills, deaths, role (replicated); kill feed for everyone | Written |
+| Scoreboard (hold **Tab**): names, role tags, K/D, ping | Written |
+| Text chat via console: all, team, proximity (25 m), private; server-side length limit and anti-spam; per-player mute; reports to a server log | Written. Chat UI with a text box comes with the UI stage (Stage 6). |
+| **Owner/admin permissions:** roles Player < Moderator < Admin < Owner, kept only on the server (`Saved/Server/Roles.ini`); listen-server host is owner; every command re-checked on the server; **all attempts audited** (including denied ones) | Written |
+| Owner/admin commands: God mode, fly, heal, teleport, go to / bring player, give weapon, spawn soldier/creature/dummy, difficulty, kick (mod), ban and set role (owner) | Written |
+| Bans checked before a player can join (`PreLogin`) | Written |
+| Server-side saved player records (kills, deaths, play time, first/last seen), versioned | Written |
+| Reconnect keeps score and role (engine inactive-player support; switched game mode to `AGameMode`) | Written |
+| Player limit (16 per server) | Config |
+| Dedicated server + client launch scripts (`Scripts/`), LAN join by IP | Written |
+| Network stress-test commands (latency, packet loss, stats) | Documented |
+
+**Honest limits:** without an online identity service, player IDs on LAN/offline aren't verified, so owner rights on a *dedicated* server should only be granted once EOS/Google sign-in exists (3B). Lobbies, matchmaking, friends/invites, voice chat, Google sign-in and a *packaged* dedicated server need your Epic/Google developer accounts and a source-built engine (see the doc).
+
+### 3A test checklist
+- [ ] HUD says `dev build 0.6` and shows **ROLE: OWNER** (you're the host)
+- [ ] Console (~): `NAGod` → GOD shown, damage does nothing; `NAFly` → fly with Space/C; `NAGive sniper`; `NASpawn creature`; `NASpawn soldier`; `NATeleport 0 0 300`
+- [ ] Kill a soldier or creature: the kill feed (top right) shows it; Tab shows your kill count
+- [ ] 2 players (Play As Client): the **client** typing `NAGod` gets "Permission denied"; `Saved/Server/AdminAudit.log` records the DENIED attempt
+- [ ] Host `NASetRole <client name> Admin` → the client can now use `NAGod`
+- [ ] `NAChat "hello"` appears for both; `NALocal` only reaches players within 25 m; `NAWhisper Name "hi"` only reaches that player
+- [ ] Separate processes: `Scripts\StartServer.bat`, then `Scripts\JoinLocal.bat` twice → two clients in the same world, both see each other, shoot, fight the same AI
+- [ ] Leave and rejoin: "Welcome back" shows your lifetime stats
+- [ ] With `NetEmulation.PktLag 150` the game stays playable
 
 ## Milestone 2D: advanced movement and environment survival (Stage 2, part 4)
 

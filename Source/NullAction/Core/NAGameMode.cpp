@@ -8,6 +8,7 @@
 #include "AI/NAEnemySoldier.h"
 #include "Combat/NATrainingDummy.h"
 #include "Core/NAPlayerController.h"
+#include "Core/NAGameState.h"
 #include "Creatures/NACreature.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
@@ -22,6 +23,8 @@ ANAGameMode::ANAGameMode()
 	DefaultPawnClass = ANAPlayerCharacter::StaticClass();
 	HUDClass = ANAHUD::StaticClass();
 	PlayerControllerClass = ANAPlayerController::StaticClass();
+	PlayerStateClass = ANAPlayerState::StaticClass();
+	GameStateClass = ANAGameState::StaticClass();
 	TestArenaClass = ANATestArena::StaticClass();
 }
 
@@ -228,11 +231,19 @@ void ANAGameMode::SpawnCreature()
 	}
 }
 
-void ANAGameMode::OnCreatureKilled(ANACreature* Creature)
+void ANAGameMode::OnCreatureKilled(ANACreature* Creature, AController* Killer)
 {
 	if (!Creature)
 	{
 		return;
+	}
+	if (ANAPlayerState* KillerState = Killer ? Killer->GetPlayerState<ANAPlayerState>() : nullptr)
+	{
+		KillerState->AddKill();
+	}
+	if (ANAGameState* State = GetGameState<ANAGameState>())
+	{
+		State->BroadcastKill(DisplayNameOf(nullptr, Killer), TEXT("Ash Stalker"));
 	}
 	Creature->SetLifeSpan(CorpseLifeSeconds * 2.f);
 	FTimerHandle Handle;
@@ -277,6 +288,25 @@ void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Kille
 	if (!Victim)
 	{
 		return;
+	}
+
+	// Score and kill feed (dummies don't count).
+	if (!Victim->IsA<ANATrainingDummy>())
+	{
+		AController* VictimOwner = Victim->GetController();
+		ANAPlayerState* KillerState = Killer ? Killer->GetPlayerState<ANAPlayerState>() : nullptr;
+		if (KillerState && Killer != VictimOwner)
+		{
+			KillerState->AddKill();
+		}
+		if (ANAPlayerState* VictimState = VictimOwner ? VictimOwner->GetPlayerState<ANAPlayerState>() : nullptr)
+		{
+			VictimState->AddDeath();
+		}
+		if (ANAGameState* State = GetGameState<ANAGameState>())
+		{
+			State->BroadcastKill(DisplayNameOf(nullptr, Killer), DisplayNameOf(Victim, VictimOwner));
+		}
 	}
 
 	// Enemy soldiers: a replacement arrives at the same post after a while.

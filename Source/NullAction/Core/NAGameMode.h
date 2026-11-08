@@ -1,7 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
+#include "Core/NAPlayerController.h"
+#include "Core/NAPlayerState.h"
 #include "AI/NAAITypes.h"
 #include "NAGameMode.generated.h"
 
@@ -10,6 +12,7 @@ class ANATestArena;
 class APlayerStart;
 class ANAEnemySoldier;
 class ANACreature;
+class UNAPlayerRecord;
 
 /**
  * Server-only rules for NULL-ACTION sessions. Exists only on the server (listen or dedicated);
@@ -19,7 +22,7 @@ class ANACreature;
  * weapon/supply pickups and training dummies, so any empty level is immediately playable.
  */
 UCLASS(Config = Game)
-class NULLACTION_API ANAGameMode : public AGameModeBase
+class NULLACTION_API ANAGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
@@ -28,12 +31,23 @@ public:
 
 	virtual void StartPlay() override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
+
+	/** Server: chat from a player (validated, rate-limited) to the right recipients. */
+	void HandleChat(ANAPlayerController* Sender, ENAChatChannel Channel, const FString& Target, const FString& Message);
+	void HandleReport(ANAPlayerController* Reporter, const FString& PlayerName, const FString& Reason);
+
+	/** Server: admin/owner command. The caller's role is checked here, never on the client. */
+	void HandleAdminCommand(ANAPlayerController* Caller, ENAAdminCommand Command, const FString& Arg1, const FString& Arg2, const FVector& Location);
 
 	/** Called by characters when they die. Players respawn after RespawnDelaySeconds. */
 	void OnCharacterKilled(ANACharacterBase* Victim, AController* Killer);
 
 	/** Called by creatures when they die; a new one returns to the den later. */
-	void OnCreatureKilled(ANACreature* Creature);
+	void OnCreatureKilled(ANACreature* Creature, AController* Killer = nullptr);
 
 	/** Applies to every enemy now and to future spawns. */
 	void SetEnemyDifficulty(ENADifficulty NewDifficulty);
@@ -57,6 +71,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
 	float CreatureRespawnSeconds = 45.f;
 
+	/** On a listen server (or offline) the person hosting is the owner. On a dedicated server, owners come from Saved/Server/Roles.ini. */
+	UPROPERTY(Config, EditDefaultsOnly, Category = "NullAction|Security")
+	bool bHostIsOwner = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Chat")
+	float ProximityChatRangeCm = 2500.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Chat")
+	int32 MaxChatLength = 200;
+
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Dev")
 	bool bBuildTestArenaInEmptyLevels = true;
 
@@ -72,6 +96,25 @@ private:
 	void RespawnPlayer(TWeakObjectPtr<AController> Controller);
 	void SpawnEnemy(int32 PostIndex);
 	void SpawnCreature();
+
+	// ----- Online: identity, permissions, persistence (NAGameMode_Online.cpp) -----
+	void LoadServerLists();
+	void SaveServerLists() const;
+	void AuditLog(const FString& Line) const;
+	FString ServerFilePath(const TCHAR* FileName) const;
+	ENAPlayerRole ResolveRole(const ANAPlayerController* Player) const;
+	ANAPlayerController* FindPlayerByName(const FString& PlayerName) const;
+	void SystemMessage(ANAPlayerController* To, const FString& Text) const;
+	void BroadcastSystemMessage(const FString& Text) const;
+	void LoadPlayerRecord(ANAPlayerController* Player);
+	void SavePlayerRecord(AController* Player) const;
+	static FString RecordSlotName(const FString& StableId);
+	static FString DisplayNameOf(const AActor* Actor, const AController* Controller);
+
+	TMap<FString, ENAPlayerRole> RolesById;
+	TSet<FString> BannedIds;
+	TMap<TWeakObjectPtr<APlayerController>, TArray<float>> ChatTimes;
+	TMap<TWeakObjectPtr<APlayerController>, float> JoinTimes;
 	FVector CreatureDenLocation = FVector::ZeroVector;
 
 	struct FEnemyPost

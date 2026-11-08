@@ -2,6 +2,10 @@
 
 #include "AI/NAEnemySoldier.h"
 #include "Character/NAPlayerCharacter.h"
+#include "Core/NAGameState.h"
+#include "Core/NAPlayerController.h"
+#include "Core/NAPlayerState.h"
+#include "GameFramework/GameStateBase.h"
 #include "Creatures/NACreature.h"
 #include "EngineUtils.h"
 #include "Combat/NAHealthComponent.h"
@@ -50,6 +54,96 @@ void ANAHUD::DrawBar(float X, float Y, float Width, float Height, float Fraction
 	DrawText(Label, TextColor, X + Width + 8.f, Y - 1.f, nullptr, 0.9f);
 }
 
+void ANAHUD::DrawChat(float ScreenH)
+{
+	const ANAPlayerController* PC = Cast<ANAPlayerController>(GetOwningPlayerController());
+	if (!PC)
+	{
+		return;
+	}
+	const float Now = GetWorld()->GetTimeSeconds();
+	const TArray<FNAChatLine>& ChatLines = PC->GetChatLog();
+	float Y = ScreenH - 170.f;
+	int32 Shown = 0;
+	for (int32 Index = ChatLines.Num() - 1; Index >= 0 && Shown < 7; --Index)
+	{
+		const FNAChatLine& Line = ChatLines[Index];
+		const float Age = Now - Line.LocalTime;
+		if (Age > 25.f && !bShowScoreboard)
+		{
+			break; // Old lines fade out (hold Tab to see them again).
+		}
+		FString Prefix;
+		FLinearColor Color = TextColor;
+		switch (Line.Channel)
+		{
+		case ENAChatChannel::Team:      Prefix = TEXT("[TEAM] ");  Color = FLinearColor(0.5f, 0.8f, 1.f); break;
+		case ENAChatChannel::Proximity: Prefix = TEXT("[NEAR] ");  Color = FLinearColor(0.8f, 1.f, 0.7f); break;
+		case ENAChatChannel::Private:   Prefix = TEXT("[PM] ");    Color = FLinearColor(1.f, 0.6f, 1.f);  break;
+		case ENAChatChannel::System:    Prefix = TEXT("* ");       Color = FLinearColor(1.f, 0.85f, 0.4f); break;
+		default: break;
+		}
+		const FString Text = Line.Sender.IsEmpty() ? Prefix + Line.Text : FString::Printf(TEXT("%s%s: %s"), *Prefix, *Line.Sender, *Line.Text);
+		DrawText(Text, Color, 28.f, Y, nullptr, 0.9f);
+		Y -= 16.f;
+		++Shown;
+	}
+}
+
+void ANAHUD::DrawKillFeed(float ScreenW)
+{
+	const ANAGameState* State = GetWorld()->GetGameState<ANAGameState>();
+	if (!State)
+	{
+		return;
+	}
+	const float Now = GetWorld()->GetTimeSeconds();
+	float Y = 24.f;
+	for (const FNAKillFeedEntry& Entry : State->GetKillFeed())
+	{
+		if (Now - Entry.LocalTime > 8.f)
+		{
+			continue;
+		}
+		const FString Text = FString::Printf(TEXT("%s  >  %s"), *Entry.Killer, *Entry.Victim);
+		DrawRect(Dim, ScreenW - 330.f, Y - 2.f, 310.f, 20.f);
+		DrawText(Text, TextColor, ScreenW - 320.f, Y, nullptr, 0.9f);
+		Y += 22.f;
+	}
+}
+
+void ANAHUD::DrawScoreboard(float ScreenW, float ScreenH)
+{
+	const AGameStateBase* State = GetWorld()->GetGameState();
+	if (!State)
+	{
+		return;
+	}
+	const float Width = 560.f;
+	const float X = (ScreenW - Width) * 0.5f;
+	float Y = ScreenH * 0.22f;
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.75f), X, Y, Width, 40.f + 24.f * State->PlayerArray.Num());
+	DrawText(TEXT("NULL-ACTION  //  PLAYERS"), Accent, X + 16.f, Y + 10.f, nullptr, 1.1f);
+	DrawText(TEXT("K     D     PING"), TextColor, X + Width - 170.f, Y + 12.f, nullptr, 0.9f);
+	Y += 40.f;
+	for (const APlayerState* Listed : State->PlayerArray)
+	{
+		const ANAPlayerState* NAState = Cast<ANAPlayerState>(Listed);
+		if (!NAState)
+		{
+			continue;
+		}
+		const TCHAR* Tag = NAState->GetRole() == ENAPlayerRole::Owner ? TEXT("  [OWNER]")
+			: NAState->GetRole() == ENAPlayerRole::Admin ? TEXT("  [ADMIN]")
+			: NAState->GetRole() == ENAPlayerRole::Moderator ? TEXT("  [MOD]") : TEXT("");
+		const bool bMe = GetOwningPlayerController() && GetOwningPlayerController()->PlayerState == Listed;
+		DrawText(NAState->GetPlayerName() + Tag, bMe ? Accent : TextColor, X + 16.f, Y, nullptr, 1.f);
+		DrawText(FString::Printf(TEXT("%-5d %-5d %.0f"), NAState->GetKills(), NAState->GetDeaths(), NAState->GetPingInMilliseconds()),
+			TextColor, X + Width - 170.f, Y, nullptr, 1.f);
+		Y += 24.f;
+	}
+}
+
 void ANAHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -57,6 +151,13 @@ void ANAHUD::DrawHUD()
 	if (!Canvas)
 	{
 		return;
+	}
+
+	DrawChat(Canvas->ClipY);
+	DrawKillFeed(Canvas->ClipX);
+	if (bShowScoreboard)
+	{
+		DrawScoreboard(Canvas->ClipX, Canvas->ClipY);
 	}
 
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -110,10 +211,21 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.5"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.6"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
+		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive ...)"), TextColor);
+		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)
+		{
+			if (MyState->GetRole() != ENAPlayerRole::Player)
+			{
+				FString Powers = MyState->GetRole() == ENAPlayerRole::Owner ? TEXT("ROLE: OWNER") : MyState->GetRole() == ENAPlayerRole::Admin ? TEXT("ROLE: ADMIN") : TEXT("ROLE: MODERATOR");
+				if (Player->IsGodMode())     { Powers += TEXT("   GOD"); }
+				if (Player->IsAdminFlying()) { Powers += TEXT("   FLY"); }
+				Line(Powers, Accent);
+			}
+		}
 		const TCHAR* Stance = Player->IsSwimming() ? TEXT(" (swimming)") : Player->IsSliding() ? TEXT(" (sliding)")
 			: Player->IsProne() ? TEXT(" (prone)") : Player->bIsCrouched ? TEXT(" (crouched)") : TEXT("");
 		Line(FString::Printf(TEXT("Gait: %s%s   Speed: %.0f cm/s   %s"),

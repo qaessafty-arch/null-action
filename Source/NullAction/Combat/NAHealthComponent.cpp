@@ -30,7 +30,7 @@ void UNAHealthComponent::BeginPlay()
 float UNAHealthComponent::ApplyDamage(float Amount, ENAHitZone Zone, AController* Instigator, AActor* Causer, bool bBypassArmor)
 {
 	AActor* Owner = GetOwner();
-	if (!Owner || !Owner->HasAuthority() || bDead || Amount <= 0.f)
+	if (!Owner || !Owner->HasAuthority() || bDead || Amount <= 0.f || bInvulnerable)
 	{
 		return 0.f;
 	}

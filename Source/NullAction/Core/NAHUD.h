@@ -13,10 +13,18 @@ class NULLACTION_API ANAHUD : public AHUD
 public:
 	virtual void DrawHUD() override;
 
+	void SetScoreboardVisible(bool bVisible) { bShowScoreboard = bVisible; }
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|HUD")
 	bool bShowDebugOverlay = true;
 
 private:
+	void DrawChat(float ScreenH);
+	void DrawKillFeed(float ScreenW);
+	void DrawScoreboard(float ScreenW, float ScreenH);
+
+	bool bShowScoreboard = false;
+
 	void DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Color, const FString& Label);
 };

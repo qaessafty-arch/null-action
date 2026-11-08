@@ -41,6 +41,12 @@ public:
 	bool IsSwimming() const;
 	bool IsSliding() const { return bSliding; }
 
+	/** Server only (owner/admin command): free flight. */
+	void SetAdminFlying(bool bNewFlying);
+	bool IsAdminFlying() const { return bAdminFlying; }
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	UNASurvivalComponent* GetSurvivalComponent() const { return SurvivalComponent; }
@@ -97,6 +103,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TArray<TObjectPtr<UInputAction>> WeaponSlotActions;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> ProneAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> DodgeAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> ScoreboardAction;
+
+	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
+	bool bAdminFlying = false;
+
+	UFUNCTION()
+	void OnRep_AdminFlying();
 
 	UFUNCTION(Server, Reliable)
 	void ServerInteract(AActor* Target);
@@ -148,6 +161,8 @@ private:
 	void Input_CrouchCompleted();
 	void Input_Prone();
 	void Input_Dodge();
+	void Input_ScoreboardStarted();
+	void Input_ScoreboardCompleted();
 
 	TWeakObjectPtr<AActor> FocusedInteractable;
 	float NextFootstepNoiseTime = 0.f;

@@ -20,6 +20,8 @@
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWaterVolume.h"
+#include "Core/NAHUD.h"
+#include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
 ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -70,6 +72,37 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 	UpdateSwimming();
 }
 
+void ANAPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(ANAPlayerCharacter, bAdminFlying, COND_OwnerOnly);
+}
+
+void ANAPlayerCharacter::SetAdminFlying(bool bNewFlying)
+{
+	if (HasAuthority())
+	{
+		bAdminFlying = bNewFlying;
+		OnRep_AdminFlying();
+	}
+}
+
+void ANAPlayerCharacter::OnRep_AdminFlying()
+{
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (bAdminFlying)
+	{
+		SetProne(false);
+		Move->SetMovementMode(MOVE_Flying);
+		Move->MaxFlySpeed = 1200.f;
+	}
+	else if (Move->MovementMode == MOVE_Flying)
+	{
+		Move->SetMovementMode(MOVE_Falling);
+		Move->MaxFlySpeed = SwimSpeed;
+	}
+}
+
 // ----- Water -------------------------------------------------------------------------------------
 
 bool ANAPlayerCharacter::IsSwimming() const
@@ -114,6 +147,19 @@ void ANAPlayerCharacter::UpdateSwimming()
 	if (IsDead())
 	{
 		if (bSwimmingNow) { Move->SetMovementMode(MOVE_Falling); }
+		return;
+	}
+
+	if (bAdminFlying)
+	{
+		// Admin flight: stay airborne; Space/C move straight up/down.
+		if (!bSwimmingNow) { Move->SetMovementMode(MOVE_Flying); }
+		Move->MaxFlySpeed = IsSprinting() ? 2400.f : 1200.f;
+		if (IsLocallyControlled())
+		{
+			const float Vertical = (bSwimAscend ? 1.f : 0.f) - (bSwimDescend ? 1.f : 0.f);
+			if (!FMath::IsNearlyZero(Vertical)) { AddMovementInput(FVector::UpVector, Vertical); }
+		}
 		return;
 	}
 
@@ -456,6 +502,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot4"), EInputActionValueType::Boolean));
 	ProneAction = MakeAction(TEXT("IA_Prone"), EInputActionValueType::Boolean);
 	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
+	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 
 	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NullActionDefault"), RF_Transient);
 
@@ -531,6 +578,8 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(ProneAction, EKeys::Gamepad_DPad_Up);
 	IMC->MapKey(DodgeAction, EKeys::V);
 	IMC->MapKey(DodgeAction, EKeys::Gamepad_RightThumbstick);
+	IMC->MapKey(ScoreboardAction, EKeys::Tab);
+	IMC->MapKey(ScoreboardAction, EKeys::Gamepad_Special_Left);
 
 	MappingContext = IMC;
 }
@@ -558,6 +607,11 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &ThisClass::Input_CrouchCompleted);
 	if (ProneAction) { Input->BindAction(ProneAction, ETriggerEvent::Started, this, &ThisClass::Input_Prone); }
 	if (DodgeAction) { Input->BindAction(DodgeAction, ETriggerEvent::Started, this, &ThisClass::Input_Dodge); }
+	if (ScoreboardAction)
+	{
+		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
+		Input->BindAction(ScoreboardAction, ETriggerEvent::Completed, this, &ThisClass::Input_ScoreboardCompleted);
+	}
 	Input->BindAction(FireAction, ETriggerEvent::Started, this, &ThisClass::Input_FireStarted);
 	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireCompleted);
 	Input->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::Input_AimStarted);
@@ -707,6 +761,24 @@ void ANAPlayerCharacter::Input_Crouch()
 void ANAPlayerCharacter::Input_CrouchCompleted()
 {
 	bSwimDescend = false;
+}
+
+void ANAPlayerCharacter::Input_ScoreboardStarted()
+{
+	const APlayerController* PC = Cast<APlayerController>(GetController());
+	if (ANAHUD* GameHUD = PC ? Cast<ANAHUD>(PC->GetHUD()) : nullptr)
+	{
+		GameHUD->SetScoreboardVisible(true);
+	}
+}
+
+void ANAPlayerCharacter::Input_ScoreboardCompleted()
+{
+	const APlayerController* PC = Cast<APlayerController>(GetController());
+	if (ANAHUD* GameHUD = PC ? Cast<ANAHUD>(PC->GetHUD()) : nullptr)
+	{
+		GameHUD->SetScoreboardVisible(false);
+	}
 }
 
 void ANAPlayerCharacter::Input_Prone()

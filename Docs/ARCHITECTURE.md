@@ -15,7 +15,7 @@ Source/
   NullActionEditor.Target.cs  Editor target
   NullActionServer.Target.cs  Dedicated server target (packaging needs a source-built engine)
   NullAction/
-    Core/       Game mode, HUD — server rules and session flow
+    Core/       Game mode (+ NAGameMode_Online: roles, bans, chat, admin, records), game/player state, player controller, HUD
     Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
     Animation/  UNAAnimInstance — native parent for every character AnimBP
     World/      ANATestArena — code-built test course; ANAWaterVolume — swimmable water
