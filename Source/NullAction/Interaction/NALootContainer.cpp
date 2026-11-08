@@ -13,6 +13,10 @@
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Weapons/NAWeapon.h"
+#include "Character/NAPlayerCharacter.h"
+#include "Core/NAGameMode.h"
+#include "Inventory/NAInventoryComponent.h"
+#include "Inventory/NAItems.h"
 
 #define LOCTEXT_NAMESPACE "NullActionLoot"
 
@@ -91,6 +95,26 @@ void ANALootContainer::Interact(ANACharacterBase* User)
 	default: if (Survival && Survival->RestoreWater(40.f) > 0.f) { Found.Add(TEXT("water")); } break;
 	}
 
+	// Bonus item by rarity tier (server roll; fair for everyone).
+	if (ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(User))
+	{
+		if (UNAInventoryComponent* Inventory = Player->GetInventoryComponent())
+		{
+			const float Roll = FMath::FRand();
+			ENAItemRarity Tier = Roll < 0.03f ? ENAItemRarity::Epic : Roll < 0.15f ? ENAItemRarity::Rare : Roll < 0.45f ? ENAItemRarity::Uncommon : ENAItemRarity::Common;
+			if (bHighQuality)
+			{
+				Tier = FMath::FRand() < 0.25f ? ENAItemRarity::Epic : ENAItemRarity::Rare;
+				if (Inventory->AddItem(TEXT("EnergyCell"), 1, false) > 0) { Found.Add(TEXT("an Ember Cell")); }
+			}
+			const FName Bonus = NAItems::RandomItemOfRarity(Tier);
+			if (Bonus != NAME_None && Inventory->AddItem(Bonus, 1, false) > 0)
+			{
+				Found.Add(FString::Printf(TEXT("%s [%s]"), *NAItems::NameOf(Bonus), NAItems::RarityName(Tier)));
+			}
+		}
+	}
+
 	if (ANAPlayerController* Player = Cast<ANAPlayerController>(User->GetController()))
 	{
 		Player->ClientReceiveChat(ENAChatChannel::System, FString(),
@@ -99,6 +123,15 @@ void ANALootContainer::Interact(ANACharacterBase* User)
 
 	bOpened = true;
 	OnRep_Opened();
+	if (bEventCrate)
+	{
+		if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+		{
+			GameMode->OnEventCrateLooted(this, User->GetController());
+		}
+		SetLifeSpan(60.f);
+		return;
+	}
 	GetWorldTimerManager().SetTimer(RefillTimer, this, &ANALootContainer::Refill, RefillSeconds, false);
 }
 

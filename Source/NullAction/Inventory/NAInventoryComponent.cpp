@@ -8,6 +8,7 @@
 #include "Combat/NAHealthComponent.h"
 #include "Core/NAPlayerController.h"
 #include "Core/NAPlayerState.h"
+#include "Core/NAGameMode.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Inventory/NAItems.h"
@@ -161,6 +162,10 @@ void UNAInventoryComponent::Craft(FName RecipeId)
 	}
 	AddItem(Recipe->Output, Recipe->OutputCount, false);
 	Tell(FString::Printf(TEXT("Crafted %s."), *NAItems::NameOf(Recipe->Output)));
+	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+	{
+		GameMode->AwardXP(Cast<APawn>(GetOwner()) ? Cast<APawn>(GetOwner())->GetController() : nullptr, 5, TEXT("Crafting"));
+	}
 }
 
 void UNAInventoryComponent::Use(FName ItemId)
@@ -176,9 +181,35 @@ void UNAInventoryComponent::Use(FName ItemId)
 	UNASurvivalComponent* Survival = Character->FindComponentByClass<UNASurvivalComponent>();
 	bool bUsed = false;
 
-	if (ItemId == TEXT("Bandage"))          { bUsed = Health && Health->Heal(30.f) > 0.f; }
+	if (ItemId == TEXT("Bandage"))
+	{
+		const bool bStopped = Survival && Survival->StopBleeding();
+		bUsed = (Health && Health->Heal(30.f) > 0.f) || bStopped;
+	}
 	else if (ItemId == TEXT("CookedMeat"))  { bUsed = Survival && Survival->RestoreFood(45.f) > 0.f; }
-	else if (ItemId == NAItems::RawMeat())  { bUsed = Survival && Survival->RestoreFood(12.f) > 0.f; }
+	else if (ItemId == NAItems::RawMeat())
+	{
+		bUsed = Survival && Survival->RestoreFood(12.f) > 0.f;
+		if (bUsed && FMath::FRand() < 0.3f)
+		{
+			Survival->Poison(40.f); // Raw meat is a gamble; cook it.
+			Tell(TEXT("Your stomach turns. You are POISONED (craft an Antidote: 2 Herbs + 1 Berries)."));
+		}
+	}
+	else if (ItemId == TEXT("Antidote"))    { bUsed = Survival && Survival->CurePoison(); }
+	else if (ItemId == TEXT("Medicine"))
+	{
+		const bool bCured = Survival && Survival->CureInfection();
+		bUsed = (Health && Health->Heal(20.f) > 0.f) || bCured;
+	}
+	else if (ItemId == TEXT("RepairKit"))
+	{
+		ANAWeapon* Held = Character->GetCurrentWeapon();
+		bUsed = Held && Held->GetDurability() < 99.f;
+		if (bUsed) { Held->Repair(); }
+	}
+	else if (ItemId == TEXT("Rebreather"))  { bUsed = Survival && !Survival->HasRebreather(); if (bUsed) { Survival->SetRebreather(true); } }
+	else if (ItemId == TEXT("FurCoat"))     { bUsed = Survival && !Survival->HasFurCoat(); if (bUsed) { Survival->SetFurCoat(true); } }
 	else if (ItemId == NAItems::Berries())  { bUsed = Survival && (Survival->RestoreFood(8.f) + Survival->RestoreWater(15.f)) > 0.f; }
 	else if (ItemId == TEXT("ArmorPlate"))  { bUsed = Health && Health->AddArmor(50.f) > 0.f; }
 	else if (ItemId == TEXT("AmmoPack"))
@@ -226,7 +257,7 @@ void UNAInventoryComponent::Use(FName ItemId)
 	else if (ItemId == TEXT("EmberTonic"))
 	{
 		bUsed = Health && Health->Heal(1000.f) >= 0.f;
-		if (Survival) { Survival->WarmToNormal(); }
+		if (Survival) { Survival->WarmToNormal(); Survival->Rest(100.f); }
 	}
 
 	if (bUsed)

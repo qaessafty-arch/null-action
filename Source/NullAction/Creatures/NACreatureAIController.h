@@ -37,6 +37,9 @@ class NULLACTION_API ANACreatureAIController : public AAIController
 public:
 	ANACreatureAIController();
 
+	/** Pack hunters: a packmate spotted prey; join the hunt if not already busy. */
+	void SharePrey(AActor* NewPrey);
+
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;

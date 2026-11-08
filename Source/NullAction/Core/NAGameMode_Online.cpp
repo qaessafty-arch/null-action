@@ -3,6 +3,9 @@
 
 #include "Core/NAGameMode.h"
 #include "Creatures/NAHorse.h"
+#include "Creatures/NAWolf.h"
+#include "Creatures/NADeer.h"
+#include "Creatures/NASkyMount.h"
 
 #include "NullAction.h"
 #include "AI/NAEnemySoldier.h"
@@ -242,6 +245,10 @@ void ANAGameMode::LoadPlayerRecord(ANAPlayerController* Player)
 	if (const UNAPlayerRecord* Record = Cast<UNAPlayerRecord>(UGameplayStatics::LoadGameFromSlot(Slot, 0)))
 	{
 		State->SetStats(Record->Kills, Record->Deaths);
+		if (Record->Version >= 2)
+		{
+			State->SetProgress(Record->Level, Record->XP, Record->SkillPoints, Record->SkillRanks);
+		}
 		SystemMessage(Player, FString::Printf(TEXT("Welcome back. Lifetime: %d kills, %d deaths, %.0f minutes played."),
 			Record->Kills, Record->Deaths, Record->PlaySeconds / 60.f));
 	}
@@ -267,6 +274,11 @@ void ANAGameMode::SavePlayerRecord(AController* Player) const
 	Record->LastKnownName = State->GetPlayerName();
 	Record->Kills = State->GetKills();
 	Record->Deaths = State->GetDeaths();
+	Record->Version = 2;
+	Record->Level = State->GetPlayerLevel();
+	Record->XP = State->GetXP();
+	Record->SkillPoints = State->GetSkillPoints();
+	Record->SkillRanks = State->GetSkillRanks();
 	if (const float* Joined = JoinTimes.Find(AsPlayer))
 	{
 		Record->PlaySeconds += GetWorld()->GetTimeSeconds() - *Joined;
@@ -535,10 +547,54 @@ void ANAGameMode::HandleAdminCommand(ANAPlayerController* Caller, ENAAdminComman
 				Horse->FinishSpawning(SpawnTransform); // Wild; it grazes around where it was spawned.
 			}
 		}
+		else if (Arg1.Equals(TEXT("wolf"), ESearchCase::IgnoreCase))
+		{
+			if (ANAWolf* Wolf = GetWorld()->SpawnActorDeferred<ANAWolf>(ANAWolf::StaticClass(), SpawnTransform,
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+			{
+				Wolf->SetSpawnGroup(2); // Admin-spawned: no respawn.
+				Wolf->SetDenLocation(Where);
+				Wolf->FinishSpawning(SpawnTransform);
+			}
+		}
+		else if (Arg1.Equals(TEXT("deer"), ESearchCase::IgnoreCase))
+		{
+			GetWorld()->SpawnActor<ANADeer>(ANADeer::StaticClass(), SpawnTransform, Params);
+		}
+		else if (Arg1.Equals(TEXT("glider"), ESearchCase::IgnoreCase))
+		{
+			GetWorld()->SpawnActor<ANASkyMount>(ANASkyMount::StaticClass(), SpawnTransform, Params);
+		}
 		else
 		{
-			SystemMessage(Caller, TEXT("Usage: NASpawn soldier | creature | dummy | horse"));
+			SystemMessage(Caller, TEXT("Usage: NASpawn soldier | creature | dummy | horse | wolf | deer | glider"));
 		}
+		break;
+	}
+
+	case ENAAdminCommand::Survival:
+	{
+		if (Arg1.Equals(TEXT("Easy"), ESearchCase::IgnoreCase) || Arg1.Equals(TEXT("Normal"), ESearchCase::IgnoreCase) || Arg1.Equals(TEXT("Hard"), ESearchCase::IgnoreCase))
+		{
+			SurvivalDifficulty = Arg1;
+			BroadcastSystemMessage(FString::Printf(TEXT("Survival difficulty: %s (needs drain x%.1f)"), *Arg1, GetSurvivalScale()));
+		}
+		else { SystemMessage(Caller, TEXT("Usage: NASurvival Easy | Normal | Hard")); }
+		break;
+	}
+
+	case ENAAdminCommand::Event:
+	{
+		if (!StartWorldEvent(Arg1))
+		{
+			SystemMessage(Caller, TEXT("Usage: NAEvent [sighting | supply | beacon | storm]  (another event may be running)"));
+		}
+		break;
+	}
+
+	case ENAAdminCommand::GiveXP:
+	{
+		AwardXP(Caller, FMath::Clamp(FCString::Atoi(*Arg1), 1, 100000), TEXT("Admin"));
 		break;
 	}
 
@@ -646,5 +702,34 @@ void ANAGameMode::HandleAdminCommand(ANAPlayerController* Caller, ENAAdminComman
 		}
 		break;
 	}
+	}
+}
+
+// ----- Progression -------------------------------------------------------------------------------
+
+float ANAGameMode::GetSurvivalScale() const
+{
+	if (SurvivalDifficulty.Equals(TEXT("Easy"), ESearchCase::IgnoreCase)) { return 0.5f; }
+	if (SurvivalDifficulty.Equals(TEXT("Hard"), ESearchCase::IgnoreCase)) { return 1.6f; }
+	return 1.f;
+}
+
+void ANAGameMode::AwardXP(AController* To, int32 Amount, const FString& Reason)
+{
+	ANAPlayerController* Player = Cast<ANAPlayerController>(To);
+	ANAPlayerState* State = Player ? Player->GetPlayerState<ANAPlayerState>() : nullptr;
+	if (!State || Amount <= 0)
+	{
+		return;
+	}
+	const int32 OldLevel = State->GetPlayerLevel();
+	const bool bLevelled = State->GrantXP(Amount);
+	Player->ClientXPGained(Amount, Reason);
+	if (bLevelled)
+	{
+		SystemMessage(Player, FString::Printf(TEXT("LEVEL UP! You are level %d. Skill points: %d (press K)."), State->GetPlayerLevel(), State->GetSkillPoints()));
+		BroadcastSystemMessage(FString::Printf(TEXT("%s reached level %d."), *State->GetPlayerName(), State->GetPlayerLevel()));
+		SavePlayerRecord(Player); // Progress is never lost to a crash.
+		UE_LOG(LogNullAction, Log, TEXT("%s levelled %d -> %d"), *State->GetPlayerName(), OldLevel, State->GetPlayerLevel());
 	}
 }

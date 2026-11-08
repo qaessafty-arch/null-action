@@ -10,6 +10,16 @@ enum class ENAItemCategory : uint8
 	Placeable
 };
 
+/** Loot tier: decides colour in menus and how often it drops. */
+enum class ENAItemRarity : uint8
+{
+	Common,
+	Uncommon,
+	Rare,
+	Epic,
+	Legendary
+};
+
 struct FNAItemDef
 {
 	FName Id;
@@ -18,6 +28,7 @@ struct FNAItemDef
 	int32 MaxStack = 50;
 	FLinearColor Color = FLinearColor::White;
 	FString Description;
+	ENAItemRarity Rarity = ENAItemRarity::Common;
 };
 
 struct FNAIngredient
@@ -46,6 +57,10 @@ namespace NAItems
 	NULLACTION_API const TArray<FNARecipe>& Recipes();
 	NULLACTION_API const FNARecipe* FindRecipe(FName Id);
 	NULLACTION_API FString NameOf(FName Id);
+	NULLACTION_API FLinearColor RarityColor(ENAItemRarity Rarity);
+	NULLACTION_API const TCHAR* RarityName(ENAItemRarity Rarity);
+	/** Server: a random item id of the given tier (for loot rolls), or NAME_None. */
+	NULLACTION_API FName RandomItemOfRarity(ENAItemRarity Rarity);
 
 	// Well-known ids used in code.
 	inline FName Wood()       { return TEXT("Wood"); }

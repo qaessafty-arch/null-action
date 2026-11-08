@@ -44,7 +44,10 @@ enum class ENAAdminCommand : uint8
 	ListPlayers,
 	Weather,
 	Time,
-	DayLength
+	DayLength,
+	Survival,
+	Event,
+	GiveXP
 };
 
 /**
@@ -85,6 +88,19 @@ public:
 	UFUNCTION(Exec) void NAWeather(const FString& Weather);
 	UFUNCTION(Exec) void NATime(float Hours);
 	UFUNCTION(Exec) void NADayLength(float Minutes);
+	UFUNCTION(Exec) void NASurvival(const FString& Level);
+	UFUNCTION(Exec) void NAEvent(const FString& Which = TEXT(""));
+	UFUNCTION(Exec) void NAGiveXP(int32 Amount);
+
+	/** Spend a skill point (also from the K / skills tab). */
+	UFUNCTION(Exec) void NASkill(const FString& SkillName);
+	UFUNCTION(Server, Reliable) void ServerBuySkill(uint8 Skill);
+
+	/** Server -> owning client: show "+25 XP" on the HUD. */
+	UFUNCTION(Client, Unreliable) void ClientXPGained(int32 Amount, const FString& Reason);
+	float GetLastXPTime() const { return LastXPTime; }
+	int32 GetLastXPAmount() const { return LastXPAmount; }
+	const FString& GetLastXPReason() const { return LastXPReason; }
 
 	/** Server -> this client: one chat or system line. */
 	UFUNCTION(Client, Reliable)
@@ -110,4 +126,9 @@ private:
 
 	TArray<FNAChatLine> ChatLog;
 	TSet<FString> MutedNames;
+
+private:
+	float LastXPTime = -100.f;
+	int32 LastXPAmount = 0;
+	FString LastXPReason;
 };

@@ -1,4 +1,5 @@
 #include "Core/NAGameState.h"
+#include "Net/UnrealNetwork.h"
 
 #include "Engine/World.h"
 
@@ -21,4 +22,14 @@ void ANAGameState::MulticastKill_Implementation(const FString& Killer, const FSt
 	{
 		KillFeed.RemoveAt(0);
 	}
+}
+
+void ANAGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ANAGameState, bEventActive);
+	DOREPLIFETIME(ANAGameState, EventTitle);
+	DOREPLIFETIME(ANAGameState, EventDetail);
+	DOREPLIFETIME(ANAGameState, EventLocation);
+	DOREPLIFETIME(ANAGameState, EventEndTime);
 }

@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Weapons/NATracer.h"
+#include "Abilities/NAEnergyBarrier.h"
 
 namespace NAAbility
 {
@@ -21,6 +22,7 @@ namespace NAAbility
 		case ENAArchetype::Hunter:   return { 35.f, 15.f, 10.f };
 		case ENAArchetype::Storm:    return { 60.f, 18.f, 0.6f };
 		case ENAArchetype::Guardian: return { 60.f, 25.f, 8.f };
+		case ENAArchetype::Engineer: return { 50.f, 22.f, 10.f };
 		default:                     return { 1000.f, 1.f, 0.f };
 		}
 	}
@@ -75,6 +77,7 @@ FString UNAAbilityComponent::AbilityName(ENAArchetype Archetype)
 	case ENAArchetype::Hunter:   return TEXT("Tracking Pulse");
 	case ENAArchetype::Storm:    return TEXT("Lightning Strike");
 	case ENAArchetype::Guardian: return TEXT("Restoration Field");
+	case ENAArchetype::Engineer: return TEXT("Energy Barrier");
 	default:                     return TEXT("None");
 	}
 }
@@ -158,8 +161,26 @@ void UNAAbilityComponent::ActivatePower(const FVector& AimPoint)
 		bStrikePending = true;
 	}
 
+	if (Archetype == ENAArchetype::Engineer)
+	{
+		// A shield wall 2.5 m in front of you that stops bullets and bodies for 10 s.
+		const FVector Forward = Character->GetActorForwardVector().GetSafeNormal2D();
+		const FVector Place = Character->GetActorLocation() + Forward * 250.f;
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Params.Instigator = const_cast<ANACharacterBase*>(Character);
+		if (!GetWorld()->SpawnActor<ANAEnergyBarrier>(ANAEnergyBarrier::StaticClass(), FTransform(Forward.Rotation(), Place), Params))
+		{
+			return;
+		}
+	}
+
+	// Power Mastery: shorter cooldowns.
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	const ANAPlayerState* State = OwnerPawn ? OwnerPawn->GetPlayerState<ANAPlayerState>() : nullptr;
+	const int32 Mastery = State ? State->GetSkillRank(ENASkill::PowerMastery) : 0;
 	Energy -= Spec.Cost;
-	CooldownEnd = Now + Spec.Cooldown;
+	CooldownEnd = Now + Spec.Cooldown * (1.f - 0.1f * Mastery);
 	ActiveEnd = Now + Spec.Duration;
 	NextFieldPulse = Now;
 }
@@ -206,7 +227,10 @@ void UNAAbilityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 		return;
 	}
 	const float Now = ServerTime();
-	Energy = FMath::Min(MaxEnergy, Energy + EnergyRegenPerSecond * DeltaTime);
+	const APawn* OwnerPawn = Cast<APawn>(Owner);
+	const ANAPlayerState* OwnerState = OwnerPawn ? OwnerPawn->GetPlayerState<ANAPlayerState>() : nullptr;
+	const float Mastery = OwnerState ? static_cast<float>(OwnerState->GetSkillRank(ENASkill::PowerMastery)) : 0.f;
+	Energy = FMath::Min(MaxEnergy, Energy + EnergyRegenPerSecond * (1.f + 0.1f * Mastery) * DeltaTime);
 
 	if (bStrikePending && Now >= StrikeWarningEnd)
 	{

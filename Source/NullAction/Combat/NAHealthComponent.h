@@ -47,6 +47,13 @@ public:
 
 	/** Set before play starts (e.g. in an owner's constructor) to change toughness. */
 	void SetMaxHealth(float NewMaxHealth) { MaxHealth = FMath::Max(1.f, NewMaxHealth); Health = MaxHealth; }
+	/** Server: change max health keeping the current health fraction (progression skills). */
+	void SetMaxHealthKeepFraction(float NewMaxHealth)
+	{
+		const float Fraction = MaxHealth > 0.f ? Health / MaxHealth : 1.f;
+		MaxHealth = FMath::Max(1.f, NewMaxHealth);
+		Health = FMath::Clamp(Fraction, 0.f, 1.f) * MaxHealth;
+	}
 
 	/** Server only. Brings a dead owner back with a fraction of max health (respawns, dummies, future revive). */
 	void Revive(float HealthFraction = 1.f);

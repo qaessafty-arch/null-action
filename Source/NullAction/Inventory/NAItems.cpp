@@ -41,6 +41,16 @@ namespace
 			// Boss trophies
 			Item(TEXT("BehemothHeart"), TEXT("Behemoth Heart"), C::Resource,   3, FLinearColor(1.f, 0.25f, 0.05f), TEXT("Still burning. Trophy of the Ashen Behemoth. Crafts the Ashen Aegis.")),
 			Item(TEXT("AshenAegis"),    TEXT("Ashen Aegis"),    C::Consumable, 3, FLinearColor(0.9f, 0.35f, 0.1f), TEXT("Use: full health, full armor, +1 Ash charge.")),
+			// Medicine, tools and protective gear
+			Item(TEXT("Antidote"),    TEXT("Antidote"),     C::Consumable, 5, FLinearColor(0.4f, 0.8f, 0.5f),  TEXT("Use: cures poison.")),
+			Item(TEXT("Medicine"),    TEXT("Medicine"),     C::Consumable, 5, FLinearColor(0.9f, 0.9f, 1.f),   TEXT("Use: cures infection, heals 20.")),
+			Item(TEXT("RepairKit"),   TEXT("Repair Kit"),   C::Consumable, 5, FLinearColor(0.6f, 0.55f, 0.4f), TEXT("Use: fully repairs the weapon in your hands.")),
+			Item(TEXT("Binoculars"),  TEXT("Binoculars"),   C::Resource,   1, FLinearColor(0.2f, 0.2f, 0.22f), TEXT("Carry them and press B: zoom and scan creatures (health, weak spot, behaviour).")),
+			Item(TEXT("Rebreather"),  TEXT("Rebreather"),   C::Consumable, 1, FLinearColor(0.2f, 0.5f, 0.7f),  TEXT("Use: equip; your breath lasts 4x longer underwater (until you die).")),
+			Item(TEXT("FurCoat"),     TEXT("Fur Coat"),     C::Consumable, 1, FLinearColor(0.45f, 0.42f, 0.4f),TEXT("Use: wear it; cold chills you half as fast (until you die).")),
+			Item(TEXT("WolfPelt"),    TEXT("Wolf Pelt"),    C::Resource,  20, FLinearColor(0.35f, 0.35f, 0.36f), TEXT("Warm grey fur. Makes Fur Coats.")),
+			Item(TEXT("DeerHide"),    TEXT("Deer Hide"),    C::Resource,  20, FLinearColor(0.5f, 0.32f, 0.18f), TEXT("Supple leather. Bandages, rebreather seals.")),
+			Item(TEXT("EnergyCell"),  TEXT("Ember Cell"),   C::Resource,  10, FLinearColor(1.f, 0.6f, 0.2f),   TEXT("A rare glowing energy core found in the wild. Used by Engineers and in advanced gear.")),
 			// Placeables
 			Item(TEXT("WoodFoundation"), TEXT("Wood Foundation"), C::Placeable, 20, FLinearColor(0.3f, 0.18f, 0.08f), TEXT("3 x 3 m floor. Snaps to a grid.")),
 			Item(TEXT("WoodWall"),       TEXT("Wood Wall"),       C::Placeable, 20, FLinearColor(0.3f, 0.18f, 0.08f), TEXT("Wall on a grid edge.")),
@@ -73,6 +83,12 @@ namespace
 			Recipe(TEXT("HuntingKnife"),   1, { { TEXT("ScrapMetal"), 2 }, { TEXT("Wood"), 1 } }),
 			Recipe(TEXT("SnareTrap"),      1, { { TEXT("ScrapMetal"), 3 }, { TEXT("Wood"), 2 } }),
 			Recipe(TEXT("AshenAegis"),     1, { { TEXT("BehemothHeart"), 1 }, { TEXT("AshHide"), 3 }, { TEXT("ScrapMetal"), 4 } }, true),
+			Recipe(TEXT("Antidote"),       1, { { TEXT("Herb"), 2 }, { TEXT("Berries"), 1 } }),
+			Recipe(TEXT("Medicine"),       1, { { TEXT("Herb"), 4 }, { TEXT("Berries"), 2 } }, true),
+			Recipe(TEXT("RepairKit"),      1, { { TEXT("ScrapMetal"), 3 }, { TEXT("Wood"), 1 } }),
+			Recipe(TEXT("Binoculars"),     1, { { TEXT("ScrapMetal"), 4 }, { TEXT("Stone"), 2 } }),
+			Recipe(TEXT("Rebreather"),     1, { { TEXT("ScrapMetal"), 6 }, { TEXT("DeerHide"), 2 }, { TEXT("EnergyCell"), 1 } }),
+			Recipe(TEXT("FurCoat"),        1, { { TEXT("WolfPelt"), 3 }, { TEXT("DeerHide"), 1 } }),
 			Recipe(TEXT("Bait"),           1, { { TEXT("RawMeat"), 1 }, { TEXT("Berries"), 2 } }),
 			Recipe(TEXT("WoodFoundation"), 1, { { TEXT("Wood"), 8 } }),
 			Recipe(TEXT("WoodWall"),       1, { { TEXT("Wood"), 5 } }),
@@ -81,10 +97,78 @@ namespace
 	}
 }
 
+namespace
+{
+	TArray<FNAItemDef> BuildItemsWithRarity()
+	{
+		TArray<FNAItemDef> Items = BuildItems();
+		struct FTier { const TCHAR* Id; ENAItemRarity Rarity; };
+		const FTier Tiers[] =
+		{
+			{ TEXT("ScrapMetal"), ENAItemRarity::Uncommon }, { TEXT("AshHide"), ENAItemRarity::Uncommon },
+			{ TEXT("WolfPelt"), ENAItemRarity::Uncommon },   { TEXT("DeerHide"), ENAItemRarity::Uncommon },
+			{ TEXT("AmmoPack"), ENAItemRarity::Uncommon },   { TEXT("Antidote"), ENAItemRarity::Uncommon },
+			{ TEXT("RepairKit"), ENAItemRarity::Uncommon },  { TEXT("HuntingBow"), ENAItemRarity::Uncommon },
+			{ TEXT("SnareTrap"), ENAItemRarity::Uncommon },  { TEXT("Binoculars"), ENAItemRarity::Uncommon },
+			{ TEXT("EmberFang"), ENAItemRarity::Rare },      { TEXT("EmberTonic"), ENAItemRarity::Rare },
+			{ TEXT("ArmorPlate"), ENAItemRarity::Rare },     { TEXT("Medicine"), ENAItemRarity::Rare },
+			{ TEXT("FurCoat"), ENAItemRarity::Rare },        { TEXT("EnergyCell"), ENAItemRarity::Rare },
+			{ TEXT("Rebreather"), ENAItemRarity::Epic },     { TEXT("AshenAegis"), ENAItemRarity::Epic },
+			{ TEXT("BehemothHeart"), ENAItemRarity::Legendary },
+		};
+		for (FNAItemDef& Def : Items)
+		{
+			for (const FTier& Tier : Tiers)
+			{
+				if (Def.Id == FName(Tier.Id)) { Def.Rarity = Tier.Rarity; }
+			}
+		}
+		return Items;
+	}
+}
+
 const TArray<FNAItemDef>& NAItems::All()
 {
-	static const TArray<FNAItemDef> Items = BuildItems();
+	static const TArray<FNAItemDef> Items = BuildItemsWithRarity();
 	return Items;
+}
+
+FLinearColor NAItems::RarityColor(ENAItemRarity Rarity)
+{
+	switch (Rarity)
+	{
+	case ENAItemRarity::Uncommon:  return FLinearColor(0.35f, 0.9f, 0.35f);
+	case ENAItemRarity::Rare:      return FLinearColor(0.3f, 0.6f, 1.f);
+	case ENAItemRarity::Epic:      return FLinearColor(0.75f, 0.4f, 1.f);
+	case ENAItemRarity::Legendary: return FLinearColor(1.f, 0.65f, 0.1f);
+	default:                       return FLinearColor(0.9f, 0.9f, 0.9f);
+	}
+}
+
+const TCHAR* NAItems::RarityName(ENAItemRarity Rarity)
+{
+	switch (Rarity)
+	{
+	case ENAItemRarity::Uncommon:  return TEXT("Uncommon");
+	case ENAItemRarity::Rare:      return TEXT("Rare");
+	case ENAItemRarity::Epic:      return TEXT("Epic");
+	case ENAItemRarity::Legendary: return TEXT("Legendary");
+	default:                       return TEXT("Common");
+	}
+}
+
+FName NAItems::RandomItemOfRarity(ENAItemRarity Rarity)
+{
+	TArray<FName> Pool;
+	for (const FNAItemDef& Def : All())
+	{
+		// Placeables and boss trophies never come from random loot.
+		if (Def.Rarity == Rarity && Def.Category != ENAItemCategory::Placeable && Def.Id != FName(TEXT("BehemothHeart")))
+		{
+			Pool.Add(Def.Id);
+		}
+	}
+	return Pool.Num() > 0 ? Pool[FMath::RandRange(0, Pool.Num() - 1)] : NAME_None;
 }
 
 const FNAItemDef* NAItems::Find(FName Id)

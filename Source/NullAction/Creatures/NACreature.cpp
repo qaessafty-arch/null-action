@@ -192,14 +192,14 @@ void ANACreature::BeginPlay()
 	{
 		if (UMaterialInstanceDynamic* MID = Part->CreateAndSetMaterialInstanceDynamic(0))
 		{
-			MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.055f, 0.05f, 0.05f));
+			MID->SetVectorParameterValue(TEXT("Color"), BodyColor);
 		}
 	}
 	for (UStaticMeshComponent* Part : EmberParts)
 	{
 		if (UMaterialInstanceDynamic* MID = Part->CreateAndSetMaterialInstanceDynamic(0))
 		{
-			MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.35f, 0.04f));
+			MID->SetVectorParameterValue(TEXT("Color"), GlowColor);
 		}
 	}
 
@@ -293,7 +293,21 @@ void ANACreature::OnRep_BiteCount()
 	}
 }
 
+FName ANACreature::GetSkinItem() const
+{
+	return NAItems::AshHide();
+}
+
 void ANACreature::HandleKilled(AActor* Victim, AController* Killer)
+{
+	DropLoot();
+	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+	{
+		GameMode->OnCreatureKilled(this, Killer);
+	}
+}
+
+void ANACreature::DropLoot()
 {
 	// Hunting rewards: hide, meat and a rare fang.
 	// Dropped beside the body (not under it) so the carcass stays skinnable and the loot reachable.
@@ -304,10 +318,9 @@ void ANACreature::HandleKilled(AActor* Victim, AController* Killer)
 	{
 		ANAItemPickup::Drop(GetWorld(), GetActorLocation() + Side + GetActorForwardVector() * 80.f, NAItems::EmberFang(), 1);
 	}
-
-	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+	if (FMath::FRand() < 0.15f)
 	{
-		GameMode->OnCreatureKilled(this, Killer);
+		ANAItemPickup::Drop(GetWorld(), GetActorLocation() - Side + GetActorForwardVector() * 80.f, TEXT("EnergyCell"), 1);
 	}
 }
 
@@ -346,7 +359,7 @@ FText ANACreature::GetInteractionPrompt(const ANACharacterBase* User) const
 	const UNAInventoryComponent* Inventory = Player ? Player->GetInventoryComponent() : nullptr;
 	if (Inventory && Inventory->CountOf(NAItems::HuntingKnife()) > 0)
 	{
-		return FText::FromString(TEXT("Skin the Ash Stalker (extra hide and meat)"));
+		return FText::FromString(FString::Printf(TEXT("Skin the %s (extra hide and meat)"), *GetSpeciesName()));
 	}
 	return FText::FromString(TEXT("Skinning needs a Hunting Knife (craft: 2 Scrap + 1 Wood)"));
 }
@@ -373,11 +386,15 @@ void ANACreature::Interact(ANACharacterBase* User)
 			ANAItemPickup::Drop(GetWorld(), GetActorLocation() + FVector(0.f, 0.f, 40.f), Item, Count - Added); // Inventory full.
 		}
 	};
-	Give(NAItems::AshHide(), 1);
+	Give(GetSkinItem(), 1);
 	Give(NAItems::RawMeat(), 2);
-	if (FMath::FRand() < 0.25f)
+	if (GetSkinItem() == NAItems::AshHide() && FMath::FRand() < 0.25f)
 	{
 		Give(NAItems::EmberFang(), 1);
+	}
+	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+	{
+		GameMode->AwardXP(Player->GetController(), 10, TEXT("Skinning"));
 	}
 }
 
@@ -396,7 +413,7 @@ void ANACreature::Tick(float DeltaSeconds)
 			bTrackLeft = !bTrackLeft;
 			const FVector Ground = Location - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight())
 				+ GetActorRightVector() * (bTrackLeft ? -15.f : 15.f);
-			ANACreatureTrack::Spawn(GetWorld(), Ground, GetActorRotation().Yaw, TEXT("Ash Stalker"));
+			ANACreatureTrack::Spawn(GetWorld(), Ground, GetActorRotation().Yaw, GetSpeciesName());
 		}
 	}
 

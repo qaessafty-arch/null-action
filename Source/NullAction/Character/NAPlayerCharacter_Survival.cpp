@@ -113,6 +113,10 @@ int32 ANAPlayerCharacter::GetMenuEntryCount() const
 	{
 		return InventoryComponent ? InventoryComponent->GetItems().Num() : 0;
 	}
+	if (InventoryTab == 2)
+	{
+		return ANAPlayerState::SkillCount;
+	}
 	return NAItems::Recipes().Num();
 }
 
@@ -148,16 +152,29 @@ void ANAPlayerCharacter::Input_MenuLeft()
 {
 	if (bInventoryOpen)
 	{
-		InventoryTab = 0;
+		InventoryTab = FMath::Max(0, InventoryTab - 1);
 		InventoryIndex = 0;
 	}
+}
+
+void ANAPlayerCharacter::Input_Skills()
+{
+	if (bInventoryOpen && InventoryTab == 2)
+	{
+		bInventoryOpen = false;
+		return;
+	}
+	bInventoryOpen = true;
+	InventoryTab = 2;
+	InventoryIndex = 0;
+	StopBuilding();
 }
 
 void ANAPlayerCharacter::Input_MenuRight()
 {
 	if (bInventoryOpen)
 	{
-		InventoryTab = 1;
+		InventoryTab = FMath::Min(2, InventoryTab + 1);
 		InventoryIndex = 0;
 	}
 }
@@ -169,6 +186,14 @@ void ANAPlayerCharacter::Input_MenuConfirm()
 		return;
 	}
 
+	if (InventoryTab == 2)
+	{
+		if (ANAPlayerController* PC = Cast<ANAPlayerController>(GetController()))
+		{
+			PC->ServerBuySkill(static_cast<uint8>(InventoryIndex)); // The server checks points and ranks.
+		}
+		return;
+	}
 	if (InventoryTab == 1)
 	{
 		const TArray<FNARecipe>& Recipes = NAItems::Recipes();

@@ -1,5 +1,6 @@
 #include "Creatures/NACreatureAIController.h"
 #include "Hunting/NABait.h"
+#include "EngineUtils.h"
 
 #include "AITypes.h"
 #include "Character/NACharacterBase.h"
@@ -173,7 +174,23 @@ void ANACreatureAIController::UpdatePrey(float Now)
 	{
 		if (!Prey.IsValid() || State == ENACreatureState::Roam || State == ENACreatureState::Return)
 		{
+			const bool bNewPrey = Prey.Get() != Nearest;
 			Prey = Nearest;
+			// Pack animals call the rest of the pack in.
+			const ANACreature* Me = Cast<ANACreature>(GetPawn());
+			if (bNewPrey && Me && Me->GetSpawnGroup() == 1)
+			{
+				for (TActorIterator<ANACreature> It(GetWorld()); It; ++It)
+				{
+					if (*It != Me && !It->IsDead() && It->GetSpawnGroup() == 1 && FVector::Dist(It->GetActorLocation(), Me->GetActorLocation()) < 3000.f)
+					{
+						if (ANACreatureAIController* Mate = Cast<ANACreatureAIController>(It->GetController()))
+						{
+							Mate->SharePrey(Nearest);
+						}
+					}
+				}
+			}
 		}
 		if (Prey.Get() == Nearest)
 		{
@@ -288,6 +305,19 @@ void ANACreatureAIController::TickRoam(float Now)
 		const FVector2D Offset = FMath::RandPointInCircle(RoamRadius);
 		MoveToPoint(Creature->GetDenLocation() + FVector(Offset.X, Offset.Y, 0.f), 100.f);
 	}
+}
+
+void ANACreatureAIController::SharePrey(AActor* NewPrey)
+{
+	if (!NewPrey || Prey.IsValid() || State == ENACreatureState::Flee)
+	{
+		return;
+	}
+	Prey = NewPrey;
+	LastKnownLocation = NewPrey->GetActorLocation();
+	LastSeenTime = GetWorld()->GetTimeSeconds();
+	EatUntil = 0.f;
+	EnterState(ENACreatureState::Stalk); // Circle in and flank with the pack.
 }
 
 bool ANACreatureAIController::TickBait(float Now)

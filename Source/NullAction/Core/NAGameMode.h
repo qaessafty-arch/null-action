@@ -55,7 +55,19 @@ public:
 	void OnBossKilled(class ANABoss* Boss, AController* Killer);
 
 	/** Called by a horse when it dies; a new wild horse joins the herd later. */
-	void OnHorseKilled(class ANAHorse* Horse);
+	void OnHorseKilled(class ANAHorse* Horse, AController* Killer);
+
+	/** Server: give experience to a player (no-op for AI or null). Handles level-ups, saving and skill effects. */
+	void AwardXP(AController* To, int32 Amount, const FString& Reason);
+
+	/** Survival drain multiplier from the server's survival difficulty (Easy 0.5, Normal 1, Hard 1.6). */
+	float GetSurvivalScale() const;
+
+	/** Server: start a world event now ("sighting", "supply", "beacon", "storm", or empty for random). */
+	bool StartWorldEvent(const FString& Which);
+	void OnEventCrateLooted(class ANALootContainer* Crate, AController* Looter);
+	void OnBeaconFinished(class ANADistressBeacon* Beacon, AController* Holder);
+	void OnEventCreatureKilled(class ANACreature* Creature, AController* Killer);
 
 	/** Server: a system message to every player. */
 	void AnnounceToAll(const FString& Text) const { BroadcastSystemMessage(Text); }
@@ -85,6 +97,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
 	float BossRespawnSeconds = 600.f;
 
+	/** Easy, Normal or Hard (Config/DefaultGame.ini; owner can change it with NASurvival). */
+	UPROPERTY(Config, EditDefaultsOnly, Category = "NullAction|Rules")
+	FString SurvivalDifficulty = TEXT("Normal");
+
 	/** On a listen server (or offline) the person hosting is the owner. On a dedicated server, owners come from Saved/Server/Roles.ini. */
 	UPROPERTY(Config, EditDefaultsOnly, Category = "NullAction|Security")
 	bool bHostIsOwner = true;
@@ -113,6 +129,28 @@ private:
 	void SpawnShrines(const FTransform& ArenaTransform);
 	void SpawnBoss();
 	void SpawnWildHorse();
+	void SpawnWolf();
+
+	// ----- World events (NAGameMode_Events.cpp) -----
+	enum class EWorldEvent : uint8 { None, Sighting, Supply, Beacon, Storm };
+	void ScheduleNextWorldEvent(float DelaySeconds);
+	void StartRandomWorldEvent();
+	void TickWorldEvent();
+	void EndWorldEvent(bool bSuccess, AController* Winner, const FString& Outcome);
+	bool FindEventSpot(FVector& OutLocation) const;
+	float ServerTimeForEvents() const;
+	EWorldEvent CurrentEvent = EWorldEvent::None;
+	TWeakObjectPtr<AActor> EventActor;
+	float EventEndsAt = 0.f;
+	float NextStormStrike = 0.f;
+	FTimerHandle WorldEventTimer;
+	FTimerHandle WorldEventTick;
+	void SpawnShipwreck();
+	void SpawnDeer();
+	void SpawnSkyMount();
+	FVector SkyRoostLocation = FVector::ZeroVector;
+	FVector WolfDenLocation = FVector::ZeroVector;
+	FVector DeerHerdCenter = FVector::ZeroVector;
 	FVector HorseHerdCenter = FVector::ZeroVector;
 	FVector BossLairLocation = FVector::ZeroVector;
 	/** Server: a player died. Rebirth at their shrine (keeping items) or drop everything where they fell. Returns true for a rebirth. */

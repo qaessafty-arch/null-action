@@ -62,6 +62,7 @@ ANAWeapon_Shotgun::ANAWeapon_Shotgun()
 	Stats.ReloadSeconds = 2.6f;
 	Stats.AimFieldOfView = 70.f;
 	Stats.ModelSize = FVector(62.f, 7.f, 12.f);
+	Stats.WearPerShot = 0.35f;
 }
 
 ANAWeapon_SniperRifle::ANAWeapon_SniperRifle()
@@ -85,6 +86,7 @@ ANAWeapon_SniperRifle::ANAWeapon_SniperRifle()
 	Stats.AimFieldOfView = 22.f;
 	Stats.AimArmLength = 120.f;
 	Stats.ModelSize = FVector(96.f, 6.f, 12.f);
+	Stats.WearPerShot = 0.5f;
 }
 
 ANAWeapon_HuntingBow::ANAWeapon_HuntingBow()
@@ -109,5 +111,6 @@ ANAWeapon_HuntingBow::ANAWeapon_HuntingBow()
 	Stats.ModelSize = FVector(10.f, 4.f, 110.f); // Tall and thin, like a bow.
 	Stats.NoiseLoudness = 0.06f;
 	Stats.CreatureDamageMultiplier = 1.6f;
+	Stats.WearPerShot = 0.15f;
 	Stats.bUsesArrows = true;
 }

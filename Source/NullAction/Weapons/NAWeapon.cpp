@@ -70,6 +70,7 @@ void ANAWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME_CONDITION(ANAWeapon, AmmoInMagazine, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(ANAWeapon, ReserveAmmo, COND_OwnerOnly);
 	DOREPLIFETIME(ANAWeapon, bReloading);
+	DOREPLIFETIME_CONDITION(ANAWeapon, Durability, COND_OwnerOnly);
 }
 
 void ANAWeapon::PostInitializeComponents()
@@ -133,6 +134,10 @@ float ANAWeapon::GetCurrentSpreadDegrees() const
 	{
 		Spread *= 0.7f;
 	}
+	if (Durability < 25.f)
+	{
+		Spread *= 1.5f; // Worn-out barrel.
+	}
 	return Spread;
 }
 
@@ -153,7 +158,7 @@ void ANAWeapon::StopFire()
 void ANAWeapon::FireOnce()
 {
 	ANACharacterBase* Character = GetOwningCharacter();
-	if (!Character || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden())
+	if (!Character || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden() || IsBroken())
 	{
 		StopFire();
 		return;
@@ -199,7 +204,7 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 {
 	ANACharacterBase* Character = GetOwningCharacter();
 	UWorld* World = GetWorld();
-	if (!Character || !World || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden() || AmmoInMagazine <= 0)
+	if (!Character || !World || Character->IsDead() || Character->IsDowned() || bReloading || IsHidden() || AmmoInMagazine <= 0 || IsBroken())
 	{
 		return;
 	}
@@ -228,6 +233,10 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 	}
 
 	--AmmoInMagazine;
+	if (Character->IsPlayerControlled())
+	{
+		Durability = FMath::Max(0.f, Durability - Stats.WearPerShot); // Guns wear out; Repair Kits fix them.
+	}
 
 	const FVector Eye = Character->GetPawnViewLocation();
 	// Start the camera ray level with the character, so objects between camera and body can't be hit.

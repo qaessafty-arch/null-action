@@ -74,6 +74,9 @@ public:
 	/** Server only: ignore all damage for a moment (dodge roll). */
 	void GrantInvulnerability(float Seconds);
 
+	/** Server: re-apply progression skill effects (players override). */
+	virtual void ApplyProgression() {}
+
 	/** Every machine: sitting on a mount (cosmetic pose for the stand-in body). */
 	void SetMountedPose(bool bMounted) { bMountedPose = bMounted; }
 	bool IsMounted() const { return bMountedPose; }

@@ -42,6 +42,9 @@ public:
 	virtual void OnJumped_Implementation() override;
 	virtual bool IsInWater() const override;
 	virtual bool IsHeadUnderwater() const override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void ApplyProgression() override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	/** Local: is the camera under the water surface (for the HUD tint)? */
 	bool IsCameraUnderwater() const;
@@ -172,6 +175,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> AbilityAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> HelpAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> WhistleAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> SkillsAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> BinocularsAction;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
 	bool bAdminFlying = false;
@@ -247,6 +252,13 @@ private:
 	void Input_Ability();
 	void Input_Help();
 	void Input_Whistle();
+	void Input_Skills();
+	void Input_Binoculars();
+	/** Local: looking through binoculars (zoomed view + creature scan on the HUD). */
+	bool bBinocularsUp = false;
+public:
+	bool IsUsingBinoculars() const { return bBinocularsUp; }
+private:
 	UFUNCTION(Server, Reliable) void ServerWhistle();
 	TWeakObjectPtr<ANAHorse> MountedHorse; // Server.
 

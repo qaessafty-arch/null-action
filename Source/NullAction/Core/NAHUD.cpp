@@ -27,6 +27,7 @@ namespace
 	const FLinearColor Accent(0.95f, 0.22f, 0.16f);
 	const FLinearColor TextColor(0.92f, 0.92f, 0.92f);
 	const FLinearColor Dim(0.f, 0.f, 0.f, 0.55f);
+	const FLinearColor AshHighlight(1.f, 0.55f, 0.15f);
 
 	const TCHAR* GaitName(ENAGait Gait)
 	{
@@ -224,60 +225,94 @@ void ANAHUD::DrawInventory(ANAPlayerCharacter* Player, float ScreenW, float Scre
 		return;
 	}
 
-	const float Width = 620.f;
-	const float Height = 430.f;
+	const float Width = 680.f;
+	const float Height = 440.f;
 	const float X = (ScreenW - Width) * 0.5f;
 	const float Y = (ScreenH - Height) * 0.5f;
-	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.88f), X, Y, Width, Height);
+	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, Width, Height);
 	DrawRect(Accent, X, Y, Width, 3.f);
 
-	const bool bItemsTab = Player->GetInventoryTab() == 0;
-	DrawText(TEXT("INVENTORY"), bItemsTab ? Accent : FLinearColor(0.5f, 0.5f, 0.5f), X + 20.f, Y + 14.f, nullptr, 1.2f);
-	DrawText(TEXT("CRAFTING"), !bItemsTab ? Accent : FLinearColor(0.5f, 0.5f, 0.5f), X + 180.f, Y + 14.f, nullptr, 1.2f);
-	DrawText(TEXT("Left/Right: tab   Up/Down: select   Enter: use / craft / build   I: close"), FLinearColor(0.6f, 0.6f, 0.6f),
+	const int32 Tab = Player->GetInventoryTab();
+	const TCHAR* TabNames[] = { TEXT("INVENTORY"), TEXT("CRAFTING"), TEXT("SKILLS") };
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		DrawText(TabNames[Index], Tab == Index ? Accent : FLinearColor(0.5f, 0.5f, 0.5f), X + 20.f + Index * 170.f, Y + 14.f, nullptr, 1.2f);
+	}
+	DrawText(TEXT("Left/Right: tab   Up/Down: select   Enter: use / craft / build / learn   I or K: close"), FLinearColor(0.6f, 0.6f, 0.6f),
 		X + 20.f, Y + Height - 26.f, nullptr, 0.85f);
 
-	float RowY = Y + 52.f;
 	const int32 Selected = Player->GetInventoryIndex();
+	const int32 VisibleRows = 13;
+	auto FirstRow = [Selected, VisibleRows](int32 Count) { return FMath::Clamp(Selected - VisibleRows / 2, 0, FMath::Max(0, Count - VisibleRows)); };
+	auto Highlight = [this, X, Width](float RowY) { DrawRect(FLinearColor(0.3f, 0.06f, 0.04f, 0.8f), X + 12.f, RowY - 2.f, Width - 24.f, 24.f); };
+	float RowY = Y + 52.f;
 
-	if (bItemsTab)
+	if (Tab == 0)
 	{
 		const TArray<FNAItemStack>& Stacks = Inventory->GetItems();
 		if (Stacks.Num() == 0)
 		{
 			DrawText(TEXT("Empty. Chop trees, mine rocks, pick herbs and berries, salvage scrap, hunt."), TextColor, X + 20.f, RowY, nullptr, 0.95f);
 		}
-		for (int32 Index = 0; Index < Stacks.Num() && Index < 13; ++Index)
+		const int32 Start = FirstRow(Stacks.Num());
+		for (int32 Index = Start; Index < Stacks.Num() && Index < Start + VisibleRows; ++Index)
 		{
 			const FNAItemDef* Def = NAItems::Find(Stacks[Index].ItemId);
 			const bool bSelected = Index == Selected;
-			if (bSelected)
-			{
-				DrawRect(FLinearColor(0.3f, 0.06f, 0.04f, 0.8f), X + 12.f, RowY - 2.f, Width - 24.f, 24.f);
-			}
+			if (bSelected) { Highlight(RowY); }
 			DrawRect(Def ? Def->Color : FLinearColor::White, X + 20.f, RowY + 3.f, 14.f, 14.f);
+			const FLinearColor NameColor = Def ? NAItems::RarityColor(Def->Rarity) : TextColor;
 			DrawText(FString::Printf(TEXT("%s  x%d"), Def ? *Def->DisplayName : *Stacks[Index].ItemId.ToString(), Stacks[Index].Count),
-				bSelected ? Accent : TextColor, X + 44.f, RowY, nullptr, 1.f);
+				NameColor, X + 44.f, RowY, nullptr, 1.f);
 			if (bSelected && Def)
 			{
-				DrawText(Def->Description, FLinearColor(0.75f, 0.75f, 0.75f), X + 280.f, RowY + 2.f, nullptr, 0.85f);
+				DrawText(FString::Printf(TEXT("[%s] %s"), NAItems::RarityName(Def->Rarity), *Def->Description),
+					FLinearColor(0.75f, 0.75f, 0.75f), X + 270.f, RowY + 2.f, nullptr, 0.8f);
 			}
 			RowY += 26.f;
 		}
 		return;
 	}
 
+	if (Tab == 2)
+	{
+		const APlayerController* PC = GetOwningPlayerController();
+		const ANAPlayerState* State = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr;
+		if (!State)
+		{
+			return;
+		}
+		DrawText(FString::Printf(TEXT("Level %d   XP %d / %d   Skill points: %d"), State->GetPlayerLevel(), State->GetXP(),
+			ANAPlayerState::XPForNextLevel(State->GetPlayerLevel()), State->GetSkillPoints()), AshHighlight, X + 20.f, RowY, nullptr, 1.05f);
+		RowY += 34.f;
+		for (int32 Index = 0; Index < ANAPlayerState::SkillCount; ++Index)
+		{
+			const ENASkill Skill = static_cast<ENASkill>(Index);
+			const int32 Rank = State->GetSkillRank(Skill);
+			const bool bSelected = Index == Selected;
+			if (bSelected) { Highlight(RowY); }
+			DrawText(ANAPlayerState::SkillName(Skill), bSelected ? Accent : TextColor, X + 20.f, RowY, nullptr, 1.f);
+			for (int32 Pip = 0; Pip < ANAPlayerState::MaxSkillRank; ++Pip)
+			{
+				DrawRect(Pip < Rank ? AshHighlight : FLinearColor(0.25f, 0.25f, 0.25f), X + 190.f + Pip * 18.f, RowY + 4.f, 13.f, 13.f);
+			}
+			DrawText(ANAPlayerState::SkillDescription(Skill), FLinearColor(0.75f, 0.75f, 0.75f), X + 260.f, RowY + 2.f, nullptr, 0.85f);
+			RowY += 30.f;
+		}
+		RowY += 10.f;
+		DrawText(TEXT("Earn XP by hunting, fighting soldiers, taming, reviving, crafting and world events."), FLinearColor(0.6f, 0.6f, 0.6f), X + 20.f, RowY, nullptr, 0.85f);
+		return;
+	}
+
 	const TArray<FNARecipe>& Recipes = NAItems::Recipes();
 	const bool bNearFire = Inventory->IsNearCampfire();
-	for (int32 Index = 0; Index < Recipes.Num(); ++Index)
+	const int32 Start = FirstRow(Recipes.Num());
+	for (int32 Index = Start; Index < Recipes.Num() && Index < Start + VisibleRows; ++Index)
 	{
 		const FNARecipe& Recipe = Recipes[Index];
 		const bool bSelected = Index == Selected;
 		const bool bCanCraft = Inventory->CanCraft(Recipe);
-		if (bSelected)
-		{
-			DrawRect(FLinearColor(0.3f, 0.06f, 0.04f, 0.8f), X + 12.f, RowY - 2.f, Width - 24.f, 24.f);
-		}
+		if (bSelected) { Highlight(RowY); }
 		FString Needs;
 		for (const FNAIngredient& Input : Recipe.Inputs)
 		{
@@ -288,9 +323,15 @@ void ANAHUD::DrawInventory(ANAPlayerCharacter* Player, float ScreenW, float Scre
 		{
 			Needs += bNearFire ? TEXT("  [campfire OK]") : TEXT("  [needs campfire]");
 		}
-		DrawText(NAItems::NameOf(Recipe.Output), bCanCraft ? FLinearColor(0.5f, 1.f, 0.5f) : FLinearColor(0.6f, 0.6f, 0.6f), X + 20.f, RowY, nullptr, 1.f);
-		DrawText(Needs, bSelected ? TextColor : FLinearColor(0.6f, 0.6f, 0.6f), X + 200.f, RowY + 2.f, nullptr, 0.85f);
+		const FNAItemDef* OutputDef = NAItems::Find(Recipe.Output);
+		const FLinearColor NameColor = !bCanCraft ? FLinearColor(0.5f, 0.5f, 0.5f) : OutputDef ? NAItems::RarityColor(OutputDef->Rarity) : TextColor;
+		DrawText(NAItems::NameOf(Recipe.Output), NameColor, X + 20.f, RowY, nullptr, 1.f);
+		DrawText(Needs, bSelected ? TextColor : FLinearColor(0.6f, 0.6f, 0.6f), X + 200.f, RowY + 2.f, nullptr, 0.8f);
 		RowY += 26.f;
+	}
+	if (Recipes.Num() > VisibleRows)
+	{
+		DrawText(FString::Printf(TEXT("%d / %d"), Selected + 1, Recipes.Num()), FLinearColor(0.6f, 0.6f, 0.6f), X + Width - 70.f, Y + 18.f, nullptr, 0.85f);
 	}
 }
 
@@ -388,25 +429,27 @@ void ANAHUD::DrawHUD()
 	// ----- Help text (top-left): hidden until F1 -----
 	if (!bShowDebugOverlay)
 	{
-		DrawText(TEXT("F1  controls     NULL-ACTION dev build 1.4"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
+		DrawText(TEXT("F1  controls     NULL-ACTION dev build 2.0"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
 	}
 	else
 	{
-		DrawPanel(14.f, 14.f, FMath::Min(ScreenW * 0.62f, 900.f), 214.f);
+		DrawPanel(14.f, 14.f, FMath::Min(ScreenW * 0.7f, 1000.f), 250.f);
 		float Y = 24.f;
 		auto Line = [this, &Y](const FString& Text, const FLinearColor& Color)
 		{
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 1.4"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 2.0"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
 		Line(TEXT("I inventory & crafting   E gather (trees, rocks, herbs, berries, scrap)"), TextColor);
 		Line(TEXT("Hunting: craft Bow (key 5, silent), Arrow Bundles, Knife (skin carcasses), Snare Traps, Bait. Look at paw prints to read tracks"), TextColor);
 		Line(TEXT("Horses: walk up slowly, E with Berries/Herbs to feed (3x tames). E ride, Shift gallop, Space jump, E dismount, H whistle"), TextColor);
-		Line(TEXT("Q class power   Console: NAClass Phantom|Hunter|Storm|Guardian   Downed teammate: tap E to revive, Crouch+E to carry"), TextColor);
+		Line(TEXT("K skills & level   B binoculars (scan creatures)   H whistle your mount   Ash Glider: Space take off/climb, C dive, Shift boost"), TextColor);
+		Line(TEXT("Survival: bleeding->Bandage, poison->Antidote, infection->Medicine, tired->rest still by a campfire, worn gun->Repair Kit"), TextColor);
+		Line(TEXT("Q class power   Console: NAClass Phantom|Hunter|Storm|Guardian|Engineer   Downed teammate: tap E to revive, Crouch+E to carry"), TextColor);
 		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive NAWeather NATime ...)"), TextColor);
 		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)
 		{
@@ -550,7 +593,7 @@ void ANAHUD::DrawHUD()
 	const float BarX = 28.f;
 	const float BarW = 220.f;
 	const float BarH = 14.f;
-	float BarY = ScreenH - 136.f;
+	float BarY = ScreenH - 176.f;
 	DrawPanel(BarX - 12.f, BarY - 10.f, BarW + 130.f, ScreenH - BarY - 4.f);
 	if (Health)
 	{
@@ -573,6 +616,22 @@ void ANAHUD::DrawHUD()
 		DrawBar(BarX, BarY, BarW * 0.5f, BarH - 4.f, Survival->GetThirstFraction(), FLinearColor(0.15f, 0.65f, 0.85f),
 			FString::Printf(TEXT("WATER %.0f%%"), Survival->GetThirstFraction() * 100.f));
 		BarY += 16.f;
+		DrawBar(BarX, BarY, BarW * 0.5f, BarH - 4.f, Survival->GetFatigueFraction(), FLinearColor(0.55f, 0.5f, 0.85f),
+			Survival->IsTired() ? TEXT("REST (tired: rest still by a campfire)") : TEXT("REST"));
+		BarY += 16.f;
+
+		// Conditions, each with its cure.
+		FString Conditions;
+		if (Survival->IsBleeding())  { Conditions += TEXT("BLEEDING (Bandage)   "); }
+		if (Survival->IsPoisoned())  { Conditions += TEXT("POISONED (Antidote)   "); }
+		if (Survival->IsInfected())  { Conditions += TEXT("INFECTED (Medicine)   "); }
+		if (Survival->HasRebreather()) { Conditions += TEXT("[Rebreather]   "); }
+		if (Survival->HasFurCoat())  { Conditions += TEXT("[Fur Coat]"); }
+		if (!Conditions.IsEmpty())
+		{
+			DrawText(Conditions, Survival->IsBleeding() || Survival->IsPoisoned() || Survival->IsInfected() ? FLinearColor(1.f, 0.35f, 0.25f) : TextColor,
+				BarX, BarY + 14.f, nullptr, 0.8f);
+		}
 
 		const float Temperature = Survival->GetBodyTemperature();
 		const FLinearColor TempColor = Survival->IsHypothermic() ? FLinearColor(0.4f, 0.7f, 1.f) : TextColor;
@@ -605,7 +664,21 @@ void ANAHUD::DrawHUD()
 		{
 			DrawText(Weapon->GetReserveAmmo() > 0 ? TEXT("PRESS R") : TEXT("NO AMMO"), Accent, RightX + 130.f, ScreenH - 74.f, nullptr, 1.f);
 		}
+		// Durability: worn guns spread more; broken guns need a Repair Kit.
+		const float Durability = Weapon->GetDurability();
+		DrawBar(RightX, ScreenH - 44.f, 226.f, 8.f, Durability / 100.f,
+			Durability < 25.f ? Accent : FLinearColor(0.6f, 0.6f, 0.55f), FString());
+		if (Weapon->IsBroken())
+		{
+			DrawText(TEXT("BROKEN - use a Repair Kit"), Accent, RightX, ScreenH - 128.f - 24.f, nullptr, 1.f);
+		}
+		else if (Durability < 25.f)
+		{
+			DrawText(TEXT("WORN - inaccurate"), Accent, RightX + 120.f, ScreenH - 100.f, nullptr, 0.8f);
+		}
 	}
+
+	DrawProgressAndEvents(Player, ScreenW, ScreenH);
 
 	// ----- Weapon slots: one small box per carried weapon, right-aligned above the ammo panel -----
 	TArray<const ANAWeapon*> Carried;

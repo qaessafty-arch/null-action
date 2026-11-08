@@ -58,6 +58,13 @@ public:
 	virtual bool CanInteract(const ANACharacterBase* User) const override;
 	virtual void Interact(ANACharacterBase* User) override;
 
+	// ----- Species (subclasses such as ANAWolf override these) -----
+	virtual FString GetSpeciesName() const { return TEXT("Ash Stalker"); }
+	virtual int32 GetXPReward() const { return 60; }
+	/** What respawns it when it dies: 0 = Ash Stalker den, 1 = wolf pack, 2 = never (world-event creature). */
+	uint8 GetSpawnGroup() const { return SpawnGroup; }
+	void SetSpawnGroup(uint8 Group) { SpawnGroup = Group; }
+
 	/** Last player who hurt it (server), so the AI can answer an attack it didn't see coming. */
 	AActor* GetLastAttacker() const { return LastAttacker.Get(); }
 	void ClearLastAttacker() { LastAttacker = nullptr; }
@@ -92,6 +99,15 @@ protected:
 	UPROPERTY(Replicated) TObjectPtr<AActor> Prey;
 	UPROPERTY(ReplicatedUsing = OnRep_BiteCount) uint8 BiteCount = 0;
 	UPROPERTY(Replicated) bool bSkinned = false;
+
+	/** Body colours applied in BeginPlay (dark ash and glowing embers by default). */
+	FLinearColor BodyColor = FLinearColor(0.055f, 0.05f, 0.05f);
+	FLinearColor GlowColor = FLinearColor(1.f, 0.35f, 0.04f);
+	uint8 SpawnGroup = 0;
+
+	/** Server: what it drops on death, and what skinning gives. */
+	virtual void DropLoot();
+	virtual FName GetSkinItem() const;
 
 	UFUNCTION() void OnRep_BiteCount();
 	UFUNCTION() void HandleDeathStateChanged(bool bNowDead);

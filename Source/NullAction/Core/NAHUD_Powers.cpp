@@ -8,6 +8,11 @@
 #include "Creatures/NACreature.h"
 #include "Creatures/NABoss.h"
 #include "Creatures/NAHorse.h"
+#include "Creatures/NASkyMount.h"
+#include "Creatures/NADeer.h"
+#include "Creatures/NAWolf.h"
+#include "Core/NAGameState.h"
+#include "Core/NAPlayerController.h"
 #include "Survival/NASurvivalComponent.h"
 #include "Hunting/NACreatureTrack.h"
 #include "AI/NAEnemySoldier.h"
@@ -98,7 +103,20 @@ void ANAHUD::DrawMounted(ANAHorse* Horse, float ScreenW, float ScreenH)
 	const float PanelX = CenterX - 170.f;
 	const float PanelY = ScreenH - 118.f;
 	DrawPanel(PanelX - 10.f, PanelY - 8.f, 360.f, 92.f);
-	DrawText(Horse->IsGalloping() ? TEXT("HORSE  -  GALLOP") : TEXT("HORSE"), AshColor, PanelX, PanelY, nullptr, 1.f);
+	const ANASkyMount* Glider = Cast<ANASkyMount>(Horse);
+	if (Glider)
+	{
+		DrawText(FString::Printf(TEXT("ASH GLIDER  -  %s   ALT %.0f m"), Glider->IsFlying() ? (Horse->IsGalloping() ? TEXT("BOOST") : TEXT("FLYING")) : TEXT("LANDED"),
+			Glider->GetAltitudeAboveGround() / 100.f), AshColor, PanelX, PanelY, nullptr, 1.f);
+		if (Glider->IsInStorm() && Glider->IsFlying())
+		{
+			DrawText(TEXT("!! STORM - strong gusts, dangerous flying"), PowerAccent, CenterX - 170.f, ScreenH - 150.f, nullptr, 1.1f);
+		}
+	}
+	else
+	{
+		DrawText(Horse->IsGalloping() ? TEXT("HORSE  -  GALLOP") : TEXT("HORSE"), AshColor, PanelX, PanelY, nullptr, 1.f);
+	}
 	if (const UNAHealthComponent* HorseHealth = Horse->GetHealthComponent())
 	{
 		DrawBar(PanelX, PanelY + 20.f, 340.f, 14.f, HorseHealth->GetHealth() / FMath::Max(HorseHealth->GetMaxHealth(), 1.f),
@@ -107,8 +125,181 @@ void ANAHUD::DrawMounted(ANAHorse* Horse, float ScreenW, float ScreenH)
 	const float HorseStamina = Horse->GetStaminaFraction();
 	DrawBar(PanelX, PanelY + 40.f, 340.f, 14.f, HorseStamina, HorseStamina < 0.2f ? FLinearColor(0.6f, 0.45f, 0.1f) : FLinearColor(0.95f, 0.8f, 0.2f),
 		HorseStamina < 0.05f ? TEXT("WINDED") : TEXT("STAMINA"));
-	DrawText(TEXT("WASD ride   Shift gallop   Space jump   E dismount"), PowerText, PanelX, PanelY + 62.f, nullptr, 0.8f);
+	DrawText(Glider ? (Glider->IsFlying() ? TEXT("W fly where you look   Space climb   C dive   Shift boost   E land (near ground)")
+		: TEXT("Space take off   WASD walk   E dismount")) : TEXT("WASD ride   Shift gallop   Space jump   E dismount"),
+		PowerText, PanelX, PanelY + 62.f, nullptr, 0.8f);
 	DrawText(FString::Printf(TEXT("%.0f km/h"), Horse->GetVelocity().Size2D() * 0.036f), PowerText, ScreenW - 140.f, ScreenH - 60.f, nullptr, 1.2f);
+}
+
+void ANAHUD::DrawProgressAndEvents(ANAPlayerCharacter* Player, float ScreenW, float ScreenH)
+{
+	UWorld* World = GetWorld();
+	const float CenterX = ScreenW * 0.5f;
+	const APlayerController* PC = GetOwningPlayerController();
+	const ANAPlayerController* NAPC = Cast<ANAPlayerController>(PC);
+	const ANAPlayerState* State = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr;
+
+	// ----- XP bar along the bottom edge, level badge, "+XP" pop-ups -----
+	if (State)
+	{
+		const float Need = static_cast<float>(ANAPlayerState::XPForNextLevel(State->GetPlayerLevel()));
+		const float Fraction = State->GetPlayerLevel() >= ANAPlayerState::MaxLevel ? 1.f : State->GetXP() / FMath::Max(1.f, Need);
+		DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.5f), 0.f, ScreenH - 5.f, ScreenW, 5.f);
+		DrawRect(AshColor, 0.f, ScreenH - 5.f, ScreenW * Fraction, 5.f);
+		FString Badge = FString::Printf(TEXT("LV %d"), State->GetPlayerLevel());
+		if (State->GetSkillPoints() > 0)
+		{
+			Badge += FString::Printf(TEXT("   %d skill point%s - press K"), State->GetSkillPoints(), State->GetSkillPoints() == 1 ? TEXT("") : TEXT("s"));
+		}
+		DrawText(Badge, AshColor, 22.f, ScreenH - 26.f, nullptr, 0.85f);
+	}
+	if (NAPC && World)
+	{
+		const float Since = World->GetTimeSeconds() - NAPC->GetLastXPTime();
+		if (Since < 2.5f)
+		{
+			const float Alpha = 1.f - Since / 2.5f;
+			DrawText(FString::Printf(TEXT("+%d XP  %s"), NAPC->GetLastXPAmount(), *NAPC->GetLastXPReason()),
+				FLinearColor(1.f, 0.7f, 0.25f, Alpha), CenterX - 80.f, ScreenH * 0.5f + 120.f - Since * 20.f, nullptr, 1.1f);
+		}
+	}
+
+	// ----- World event: objective panel (top-left) and a marker in the world -----
+	const ANAGameState* Game = World ? World->GetGameState<ANAGameState>() : nullptr;
+	if (Game && Game->IsEventActive())
+	{
+		const float Left = FMath::Max(0.f, Game->GetEventEndTime() - HudServerTime(World));
+		DrawPanel(14.f, 40.f, 430.f, 58.f);
+		DrawText(FString::Printf(TEXT("%s   %d:%02d"), *Game->GetEventTitle(), FMath::FloorToInt(Left / 60.f), FMath::FloorToInt(FMath::Fmod(Left, 60.f))),
+			AshColor, 24.f, 44.f, nullptr, 1.f);
+		DrawText(Game->GetEventDetail(), PowerText, 24.f, 66.f, nullptr, 0.8f);
+		const FVector Where = Game->GetEventLocation();
+		FVector2D Screen;
+		if (!Where.IsNearlyZero() && ProjectToScreen(Where + FVector(0.f, 0.f, 200.f), Screen))
+		{
+			const float R = 10.f;
+			DrawLine(Screen.X, Screen.Y - R, Screen.X + R, Screen.Y, AshColor, 2.f);
+			DrawLine(Screen.X + R, Screen.Y, Screen.X, Screen.Y + R, AshColor, 2.f);
+			DrawLine(Screen.X, Screen.Y + R, Screen.X - R, Screen.Y, AshColor, 2.f);
+			DrawLine(Screen.X - R, Screen.Y, Screen.X, Screen.Y - R, AshColor, 2.f);
+			DrawText(FString::Printf(TEXT("%.0f m"), FVector::Dist(Where, Player->GetActorLocation()) / 100.f), AshColor, Screen.X - 18.f, Screen.Y + 14.f, nullptr, 0.85f);
+		}
+	}
+
+	if (Player->IsUsingBinoculars())
+	{
+		DrawBinocularScan(Player, ScreenW, ScreenH);
+	}
+}
+
+void ANAHUD::DrawBinocularScan(ANAPlayerCharacter* Player, float ScreenW, float ScreenH)
+{
+	const float CenterX = ScreenW * 0.5f;
+	const float CenterY = ScreenH * 0.5f;
+	// Lens frame: dark bars top and bottom, a fine reticle.
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.85f), 0.f, 0.f, ScreenW, ScreenH * 0.12f);
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.85f), 0.f, ScreenH * 0.88f, ScreenW, ScreenH * 0.12f);
+	DrawLine(CenterX - 40.f, CenterY, CenterX + 40.f, CenterY, FLinearColor(0.8f, 1.f, 0.8f, 0.6f), 1.f);
+	DrawLine(CenterX, CenterY - 40.f, CenterX, CenterY + 40.f, FLinearColor(0.8f, 1.f, 0.8f, 0.6f), 1.f);
+
+	const APlayerController* PC = GetOwningPlayerController();
+	if (!PC)
+	{
+		return;
+	}
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	PC->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	const FVector ViewDir = ViewRotation.Vector();
+
+	// Pick the living thing closest to the centre of view (within ~3 degrees, 300 m, visible).
+	AActor* Best = nullptr;
+	float BestDot = FMath::Cos(FMath::DegreesToRadians(3.f));
+	auto Consider = [&](AActor* Candidate)
+	{
+		const FVector To = Candidate->GetActorLocation() - ViewLocation;
+		const float Distance = To.Size();
+		if (Distance > 30000.f || Distance < 100.f)
+		{
+			return;
+		}
+		const float Dot = FVector::DotProduct(To / Distance, ViewDir);
+		if (Dot <= BestDot)
+		{
+			return;
+		}
+		FHitResult Block;
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(NABinoculars), false, Player);
+		Params.AddIgnoredActor(Candidate);
+		if (GetWorld()->LineTraceSingleByChannel(Block, ViewLocation, Candidate->GetActorLocation(), ECC_Visibility, Params))
+		{
+			return; // Hidden behind something.
+		}
+		Best = Candidate;
+		BestDot = Dot;
+	};
+	for (TActorIterator<ANACreature> It(GetWorld()); It; ++It)       { if (!It->IsDead()) { Consider(*It); } }
+	for (TActorIterator<ANABoss> It(GetWorld()); It; ++It)           { if (!It->IsDead()) { Consider(*It); } }
+	for (TActorIterator<ANAHorse> It(GetWorld()); It; ++It)          { if (!It->IsDead()) { Consider(*It); } }
+	for (TActorIterator<ANAEnemySoldier> It(GetWorld()); It; ++It)   { if (!It->IsDead()) { Consider(*It); } }
+
+	TArray<FString> Lines;
+	const UNAHealthComponent* TargetHealth = nullptr;
+	if (const ANABoss* Boss = Cast<ANABoss>(Best))
+	{
+		Lines.Add(TEXT("ASHEN BEHEMOTH  (boss)"));
+		Lines.Add(TEXT("Weak spots: glowing ember core on its back, head. Body armor halves damage."));
+		Lines.Add(TEXT("Attacks: ground slam (red circle), charge, ember rain below 60%."));
+		TargetHealth = Boss->GetHealthComponent();
+	}
+	else if (const ANACreature* Creature = Cast<ANACreature>(Best))
+	{
+		static const TCHAR* Moods[] = { TEXT("roaming"), TEXT("stalking"), TEXT("HUNTING"), TEXT("fleeing") };
+		Lines.Add(FString::Printf(TEXT("%s  -  %s"), *Creature->GetSpeciesName().ToUpper(), Moods[FMath::Clamp(static_cast<int32>(Creature->GetMood()), 0, 3)]));
+		Lines.Add(Creature->IsA<ANAWolf>() ? TEXT("Pack hunter: one wolf calls the others. Weak spot: head.")
+			: TEXT("Ambush predator, bolder at night. Weak spot: the glowing eyes (head)."));
+		Lines.Add(TEXT("Counter: bait distracts it, snare traps hold it, the bow hits it hard."));
+		TargetHealth = Creature->GetHealthComponent();
+	}
+	else if (const ANAHorse* Mount = Cast<ANAHorse>(Best))
+	{
+		if (Mount->IsA<ANADeer>())
+		{
+			Lines.Add(TEXT("DEER  -  prey"));
+			Lines.Add(TEXT("Very skittish: crouch to get close. Meat and hide."));
+		}
+		else
+		{
+			const bool bGlider = Mount->IsA<ANASkyMount>();
+			Lines.Add(FString::Printf(TEXT("%s  -  %s"), bGlider ? TEXT("ASH GLIDER") : TEXT("HORSE"),
+				Mount->IsTamed() ? *FString::Printf(TEXT("owned by %s"), *Mount->GetOwnerName()) : *FString::Printf(TEXT("wild, trust %.0f%%"), Mount->GetTrust() * 100.f)));
+			Lines.Add(bGlider ? TEXT("Tame while perched with Raw/Cooked Meat (3x).") : TEXT("Approach slowly; tame with Berries or Herbs (3x)."));
+		}
+		TargetHealth = Mount->GetHealthComponent();
+	}
+	else if (const ANAEnemySoldier* Soldier = Cast<ANAEnemySoldier>(Best))
+	{
+		static const TCHAR* Alerts[] = { TEXT("unaware"), TEXT("suspicious"), TEXT("IN COMBAT") };
+		Lines.Add(FString::Printf(TEXT("ENEMY SOLDIER  -  %s"), Alerts[FMath::Clamp(static_cast<int32>(Soldier->GetAlertState()), 0, 2)]));
+		Lines.Add(TEXT("Assault rifle. Headshots kill fastest."));
+		TargetHealth = Soldier->GetHealthComponent();
+	}
+
+	if (!Best)
+	{
+		DrawText(TEXT("SCANNING..."), FLinearColor(0.8f, 1.f, 0.8f, 0.7f), CenterX - 40.f, ScreenH * 0.12f + 10.f, nullptr, 0.9f);
+		return;
+	}
+	const float Distance = FVector::Dist(Best->GetActorLocation(), Player->GetActorLocation()) / 100.f;
+	float Y = ScreenH * 0.88f - 22.f * (Lines.Num() + 1) - 10.f;
+	DrawPanel(CenterX - 300.f, Y - 6.f, 600.f, 22.f * (Lines.Num() + 1) + 12.f);
+	for (const FString& Line : Lines)
+	{
+		DrawText(Line, FLinearColor(0.85f, 1.f, 0.85f), CenterX - 290.f, Y, nullptr, 0.9f);
+		Y += 22.f;
+	}
+	const float HealthPercent = TargetHealth ? 100.f * TargetHealth->GetHealth() / FMath::Max(1.f, TargetHealth->GetMaxHealth()) : 0.f;
+	DrawText(FString::Printf(TEXT("Distance %.0f m   Health %.0f%%"), Distance, HealthPercent), AshColor, CenterX - 290.f, Y, nullptr, 0.9f);
 }
 
 void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH)

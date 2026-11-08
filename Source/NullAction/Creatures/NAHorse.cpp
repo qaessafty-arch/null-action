@@ -47,9 +47,10 @@ namespace NAHorseTuning
 	constexpr float StaminaRegenPerSecond = 10.f;
 	constexpr float WhistleRange = 15000.f;
 	const FVector HipPositions[4] = { FVector(70.f, -22.f, 5.f), FVector(70.f, 22.f, 5.f), FVector(-70.f, -22.f, 5.f), FVector(-70.f, 22.f, 5.f) };
-	const FLinearColor Coats[4] = { FLinearColor(0.30f, 0.15f, 0.07f), FLinearColor(0.04f, 0.035f, 0.03f),
-		FLinearColor(0.45f, 0.44f, 0.42f), FLinearColor(0.42f, 0.18f, 0.06f) };
-	const TCHAR* CoatNames[4] = { TEXT("bay"), TEXT("black"), TEXT("grey"), TEXT("chestnut") };
+	// 0-3 horse coats, 4 deer.
+	const FLinearColor Coats[5] = { FLinearColor(0.30f, 0.15f, 0.07f), FLinearColor(0.04f, 0.035f, 0.03f),
+		FLinearColor(0.45f, 0.44f, 0.42f), FLinearColor(0.42f, 0.18f, 0.06f), FLinearColor(0.40f, 0.25f, 0.12f) };
+	const TCHAR* CoatNames[5] = { TEXT("bay"), TEXT("black"), TEXT("grey"), TEXT("chestnut"), TEXT("deer") };
 }
 
 ANAHorse::ANAHorse(const FObjectInitializer& ObjectInitializer)
@@ -236,12 +237,37 @@ void ANAHorse::HandleKilled(AActor* Victim, AController* Killer)
 	GetCharacterMovement()->DisableMovement();
 	VisualRoot->SetRelativeRotation(FRotator(0.f, 0.f, 80.f));
 	VisualRoot->SetRelativeLocation(FVector(0.f, 0.f, -60.f));
-	ANAItemPickup::Drop(GetWorld(), GetActorLocation() + GetActorRightVector() * 150.f, NAItems::RawMeat(), 4);
+	DropLoot();
 	SetLifeSpan(60.f);
 	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
 	{
-		GameMode->OnHorseKilled(this);
+		GameMode->OnHorseKilled(this, Killer);
 	}
+}
+
+bool ANAHorse::HasFood(const UNAInventoryComponent* Inventory) const
+{
+	return Inventory && (Inventory->CountOf(NAItems::Berries()) > 0 || Inventory->CountOf(NAItems::Herb()) > 0);
+}
+
+bool ANAHorse::ConsumeFood(UNAInventoryComponent* Inventory) const
+{
+	return Inventory && (Inventory->RemoveItem(NAItems::Berries(), 1) || Inventory->RemoveItem(NAItems::Herb(), 1));
+}
+
+void ANAHorse::DropLoot()
+{
+	ANAItemPickup::Drop(GetWorld(), GetActorLocation() + GetActorRightVector() * 150.f, NAItems::RawMeat(), 4);
+}
+
+bool ANAHorse::ShouldSpookFrom(const ANAPlayerCharacter* Player, float Distance) const
+{
+	return Distance < NAHorseTuning::SpookRadius && Player->GetVelocity().Size2D() > NAHorseTuning::SpookPlayerSpeed;
+}
+
+float ANAHorse::GetFleeSpeed() const
+{
+	return NAHorseTuning::FleeSpeed;
 }
 
 // ----- Interaction: feed (tame) or ride ----------------------------------------------------------
@@ -253,19 +279,18 @@ FText ANAHorse::GetInteractionPrompt(const ANACharacterBase* User) const
 	if (bTamed)
 	{
 		const bool bMine = State && State->GetPlayerName() == OwnerName;
-		return FText::FromString(bMine ? TEXT("Ride your horse") : FString::Printf(TEXT("%s's horse"), *OwnerName));
+		return FText::FromString(bMine ? FString::Printf(TEXT("Ride your %s"), *GetMountName()) : FString::Printf(TEXT("%s's %s"), *OwnerName, *GetMountName()));
 	}
 	const UNAInventoryComponent* Inventory = Player ? Player->GetInventoryComponent() : nullptr;
-	const bool bHasFood = Inventory && (Inventory->CountOf(NAItems::Berries()) > 0 || Inventory->CountOf(NAItems::Herb()) > 0);
 	const int32 TrustPercent = FMath::RoundToInt(Trust * 100.f);
-	return FText::FromString(bHasFood
-		? FString::Printf(TEXT("Feed the wild horse (trust %d%%)"), TrustPercent)
-		: FString::Printf(TEXT("Wild horse (trust %d%%) - bring Berries or Ashroot Herbs; approach slowly"), TrustPercent));
+	return FText::FromString(HasFood(Inventory)
+		? FString::Printf(TEXT("Feed the wild %s (trust %d%%)"), *GetMountName(), TrustPercent)
+		: FString::Printf(TEXT("Wild %s (trust %d%%) - %s; approach slowly"), *GetMountName(), TrustPercent, *FoodHint()));
 }
 
 bool ANAHorse::CanInteract(const ANACharacterBase* User) const
 {
-	return !IsDead() && !Rider && Cast<ANAPlayerCharacter>(User) != nullptr;
+	return CanBeTamed() && !IsDead() && !Rider && Cast<ANAPlayerCharacter>(User) != nullptr;
 }
 
 void ANAHorse::Interact(ANACharacterBase* User)
@@ -290,15 +315,15 @@ void ANAHorse::Interact(ANACharacterBase* User)
 		}
 		else
 		{
-			Tell(FString::Printf(TEXT("This horse trusts only %s."), *OwnerName));
+			Tell(FString::Printf(TEXT("This %s trusts only %s."), *GetMountName(), *OwnerName));
 		}
 		return;
 	}
 
 	UNAInventoryComponent* Inventory = Player->GetInventoryComponent();
-	if (!Inventory || (!Inventory->RemoveItem(NAItems::Berries(), 1) && !Inventory->RemoveItem(NAItems::Herb(), 1)))
+	if (!Inventory || !ConsumeFood(Inventory))
 	{
-		Tell(TEXT("The horse sniffs your empty hand. Bring Berries or Ashroot Herbs."));
+		Tell(FString::Printf(TEXT("The %s sniffs your empty hand: %s."), *GetMountName(), *FoodHint()));
 		return;
 	}
 	Trust = FMath::Min(1.f, Trust + NAHorseTuning::TrustPerFeed);
@@ -310,11 +335,15 @@ void ANAHorse::Interact(ANACharacterBase* User)
 		OwnerId = State->GetStableId();
 		OwnerName = State->GetPlayerName();
 		OnRep_Tamed();
-		Tell(FString::Printf(TEXT("You tamed a %s horse! E to ride, H to whistle for it."), NAHorseTuning::CoatNames[CoatIndex % 4]));
+		Tell(FString::Printf(TEXT("You tamed a %s! E to ride, H to whistle for it."), *GetMountName()));
+		if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+		{
+			GameMode->AwardXP(Player->GetController(), 50, TEXT("Tamed a horse"));
+		}
 	}
 	else
 	{
-		Tell(FString::Printf(TEXT("The horse eats from your hand. Trust %d%%."), FMath::RoundToInt(Trust * 100.f)));
+		Tell(FString::Printf(TEXT("The %s eats from your hand. Trust %d%%."), *GetMountName(), FMath::RoundToInt(Trust * 100.f)));
 	}
 }
 
@@ -444,7 +473,7 @@ void ANAHorse::OnRep_Tamed()
 
 void ANAHorse::OnRep_Coat()
 {
-	const FLinearColor Coat = NAHorseTuning::Coats[CoatIndex % 4];
+	const FLinearColor Coat = NAHorseTuning::Coats[CoatIndex % 5];
 	for (UStaticMeshComponent* Part : CoatParts)
 	{
 		if (UMaterialInstanceDynamic* MID = Part->CreateAndSetMaterialInstanceDynamic(0))
@@ -516,7 +545,7 @@ void ANAHorse::UpdateSpeed()
 	}
 	else if (Now < FleeUntil)
 	{
-		Speed = NAHorseTuning::FleeSpeed;
+		Speed = GetFleeSpeed();
 	}
 	else if (CallTarget.IsValid())
 	{
@@ -598,7 +627,7 @@ void ANAHorse::ThinkServer(float DeltaSeconds)
 				continue;
 			}
 			const float Distance = FVector::Dist2D(It->GetActorLocation(), GetActorLocation());
-			if (Distance < NAHorseTuning::SpookRadius && It->GetVelocity().Size2D() > NAHorseTuning::SpookPlayerSpeed)
+			if (ShouldSpookFrom(*It, Distance))
 			{
 				FleeUntil = Now + 4.f;
 				FleeDirection = (GetActorLocation() - It->GetActorLocation()).GetSafeNormal2D();
@@ -689,6 +718,7 @@ void ANAHorse::BuildInput()
 	GallopAction = MakeAction(TEXT("IA_HorseGallop"), EInputActionValueType::Boolean);
 	JumpAction = MakeAction(TEXT("IA_HorseJump"), EInputActionValueType::Boolean);
 	DismountAction = MakeAction(TEXT("IA_HorseDismount"), EInputActionValueType::Boolean);
+	DescendAction = MakeAction(TEXT("IA_MountDescend"), EInputActionValueType::Boolean);
 
 	RideContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Horse"), RF_Transient);
 	UInputMappingContext* IMC = RideContext;
@@ -716,6 +746,8 @@ void ANAHorse::BuildInput()
 	IMC->MapKey(GallopAction, EKeys::Gamepad_LeftThumbstick);
 	IMC->MapKey(JumpAction, EKeys::SpaceBar);
 	IMC->MapKey(JumpAction, EKeys::Gamepad_FaceButton_Bottom);
+	IMC->MapKey(DescendAction, EKeys::C);
+	IMC->MapKey(DescendAction, EKeys::LeftControl);
 	IMC->MapKey(DismountAction, EKeys::E);
 	IMC->MapKey(DismountAction, EKeys::Gamepad_FaceButton_Top);
 }
@@ -734,6 +766,9 @@ void ANAHorse::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Input->BindAction(GallopAction, ETriggerEvent::Started, this, &ANAHorse::Input_GallopStarted);
 	Input->BindAction(GallopAction, ETriggerEvent::Completed, this, &ANAHorse::Input_GallopCompleted);
 	Input->BindAction(JumpAction, ETriggerEvent::Started, this, &ANAHorse::Input_Jump);
+	Input->BindAction(JumpAction, ETriggerEvent::Completed, this, &ANAHorse::Input_JumpReleased);
+	Input->BindAction(DescendAction, ETriggerEvent::Started, this, &ANAHorse::Input_DescendStarted);
+	Input->BindAction(DescendAction, ETriggerEvent::Completed, this, &ANAHorse::Input_DescendCompleted);
 	Input->BindAction(DismountAction, ETriggerEvent::Started, this, &ANAHorse::Input_Dismount);
 }
 

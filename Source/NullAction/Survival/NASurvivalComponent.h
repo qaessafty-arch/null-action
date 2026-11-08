@@ -5,10 +5,15 @@
 #include "NASurvivalComponent.generated.h"
 
 /**
- * Server-simulated stamina, hunger and thirst, replicated to the owning player.
- * - Sprinting and jumping cost stamina; at zero you are exhausted and can't sprint until it recovers.
- * - Low hunger/thirst slow stamina recovery; at zero they drain health.
- * Temperature, oxygen and fatigue come with weather, water and sleep systems (later milestones).
+ * Server-simulated survival, replicated to the owning player only.
+ * - Stamina: sprinting and jumping cost it; at zero you are exhausted.
+ * - Hunger / thirst: low values slow stamina recovery; at zero they drain health.
+ * - Oxygen (underwater), body temperature (water, cold weather, campfires).
+ * - Fatigue: drains while awake; tired players recover stamina slowly. Rest still beside a campfire.
+ * - Bleeding (from heavy hits): slow health loss until a Bandage. Untreated for 90 s it becomes an Infection.
+ * - Poison (e.g. raw meat): health loss and extra thirst for 40 s, or until an Antidote.
+ * - Infection: slow health loss and weak stamina until Medicine.
+ * Rates scale with the server's survival difficulty and the player's Survivalist / Endurance skills.
  */
 UCLASS(ClassGroup = (NullAction), meta = (BlueprintSpawnableComponent))
 class NULLACTION_API UNASurvivalComponent : public UActorComponent
@@ -29,6 +34,22 @@ public:
 	float RestoreFood(float Amount);
 	float RestoreWater(float Amount);
 	void WarmToNormal() { BodyTemperature = NormalTemperature; }
+	void StartBleeding();
+	bool StopBleeding();
+	void Poison(float Seconds);
+	bool CurePoison();
+	bool CureInfection();
+	float Rest(float Amount);
+	void SetRebreather(bool bEquipped) { bRebreather = bEquipped; }
+	void SetFurCoat(bool bWorn) { bFurCoat = bWorn; }
+	bool HasFurCoat() const { return bFurCoat; }
+
+	bool IsBleeding() const { return bBleeding; }
+	bool IsPoisoned() const { return PoisonSeconds > 0.f; }
+	bool IsInfected() const { return bInfected; }
+	bool HasRebreather() const { return bRebreather; }
+	float GetFatigueFraction() const { return Fatigue / 100.f; }
+	bool IsTired() const { return Fatigue < 25.f; }
 
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetStaminaFraction() const { return MaxStamina > 0.f ? Stamina / MaxStamina : 0.f; }
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetHungerFraction() const { return MaxHunger > 0.f ? Hunger / MaxHunger : 0.f; }
@@ -73,9 +94,18 @@ protected:
 	UPROPERTY(Replicated) float Hunger = 100.f;
 	UPROPERTY(Replicated) float Thirst = 100.f;
 	UPROPERTY(Replicated) bool bExhausted = false;
+	UPROPERTY(Replicated) float Fatigue = 100.f; // 100 = fully rested.
+	UPROPERTY(Replicated) bool bBleeding = false;
+	UPROPERTY(Replicated) float PoisonSeconds = 0.f;
+	UPROPERTY(Replicated) bool bInfected = false;
+	UPROPERTY(Replicated) bool bRebreather = false;
+	UPROPERTY(Replicated) bool bFurCoat = false;
 
 private:
 	float LastStaminaUseTime = -100.f;
 	float PendingStarvationDamage = 0.f;
 	float PendingEnvironmentDamage = 0.f;
+	float BleedingStartTime = 0.f;
+	float SurvivalScale() const;
+	int32 SkillRank(uint8 Skill) const;
 };

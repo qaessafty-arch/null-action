@@ -15,17 +15,17 @@ Source/
   NullActionEditor.Target.cs  Editor target
   NullActionServer.Target.cs  Dedicated server target (packaging needs a source-built engine)
   NullAction/
-    Core/       Game mode (+ NAGameMode_Online: roles, bans, chat, admin, records), game/player state, player controller, HUD
+    Core/       Game mode (+ _Online: roles, bans, chat, admin, records, XP; + _Events: world event director), game/player state, player controller, HUD
     Character/  ANACharacterBase (shared humanoid, downed state), ANAPlayerCharacter (camera + input; _Survival: gather/build; _Rescue: revive, carry, cloak visuals)
     Abilities/  UNAAbilityComponent: one class power on Q (Cloak, Tracking Pulse, Lightning Strike, Restoration Field), server-owned energy/cooldowns
     Animation/  UNAAnimInstance — native parent for every character AnimBP
-    World/      ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust), ANATerrainManager (streamed procedural terrain + forest), ANACabin
+    World/      NAEventActors (ember strike, distress beacon, shipwreck), ANATestArena (test course), ANAWaterVolume (swimmable water), ANAWorldEnvironment (sun/moon/sky/fog, replicated time + weather), ANAPrecipitation (local rain/snow/dust), ANATerrainManager (streamed procedural terrain + forest), ANACabin
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component
     Interaction/ INAInteractable interface, weapon/supply/item pickups, resource nodes, doors, loot crates, readable notes, Ash Shrines (rebirth points)
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
-    Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
+    Creatures/  Ash Stalker (+ ANAWolf pack variant), Ashen Behemoth boss, ANAHorse (+ ANADeer, ANASkyMount flying mount); creature AI controller with pack calls and bait
     Hunting/    Snare traps, meat bait, creature paw-print tracks
     Inventory/  Item/recipe registry (NAItems), replicated inventory component with crafting
     Building/   Player-built pieces (foundation, wall, doorway+door, campfire) with ownership and health

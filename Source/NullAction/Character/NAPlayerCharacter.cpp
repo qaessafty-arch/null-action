@@ -411,6 +411,16 @@ void ANAPlayerCharacter::UpdateCamera(float DeltaSeconds)
 	{
 		TargetLength = SprintArmLength;
 	}
+	if (bBinocularsUp)
+	{
+		// Binoculars: tight zoom over the shoulder; moving or getting hurt lowers them.
+		TargetLength = 60.f;
+		TargetFieldOfView = 12.f;
+		if (GetVelocity().Size2D() > 200.f || IsDowned() || IsDead())
+		{
+			bBinocularsUp = false;
+		}
+	}
 
 	CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetLength, DeltaSeconds, CameraInterpSpeed);
 	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, TargetFieldOfView, DeltaSeconds, CameraInterpSpeed));
@@ -530,6 +540,8 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 	HelpAction = MakeAction(TEXT("IA_Help"), EInputActionValueType::Boolean);
 	WhistleAction = MakeAction(TEXT("IA_Whistle"), EInputActionValueType::Boolean);
+	SkillsAction = MakeAction(TEXT("IA_Skills"), EInputActionValueType::Boolean);
+	BinocularsAction = MakeAction(TEXT("IA_Binoculars"), EInputActionValueType::Boolean);
 	InventoryAction = MakeAction(TEXT("IA_Inventory"), EInputActionValueType::Boolean);
 	MenuUpAction = MakeAction(TEXT("IA_MenuUp"), EInputActionValueType::Boolean);
 	MenuDownAction = MakeAction(TEXT("IA_MenuDown"), EInputActionValueType::Boolean);
@@ -616,6 +628,8 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(ScoreboardAction, EKeys::Tab);
 	IMC->MapKey(HelpAction, EKeys::F1);
 	IMC->MapKey(WhistleAction, EKeys::H);
+	IMC->MapKey(SkillsAction, EKeys::K);
+	IMC->MapKey(BinocularsAction, EKeys::B);
 	IMC->MapKey(ScoreboardAction, EKeys::Gamepad_Special_Left);
 	IMC->MapKey(InventoryAction, EKeys::I);
 	IMC->MapKey(InventoryAction, EKeys::Gamepad_Special_Right);
@@ -661,6 +675,8 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	if (AbilityAction)     { Input->BindAction(AbilityAction, ETriggerEvent::Started, this, &ThisClass::Input_Ability); }
 	if (HelpAction)        { Input->BindAction(HelpAction, ETriggerEvent::Started, this, &ThisClass::Input_Help); }
 	if (WhistleAction)     { Input->BindAction(WhistleAction, ETriggerEvent::Started, this, &ThisClass::Input_Whistle); }
+	if (SkillsAction)      { Input->BindAction(SkillsAction, ETriggerEvent::Started, this, &ThisClass::Input_Skills); }
+	if (BinocularsAction)  { Input->BindAction(BinocularsAction, ETriggerEvent::Started, this, &ThisClass::Input_Binoculars); }
 	if (ScoreboardAction)
 	{
 		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
@@ -850,6 +866,24 @@ void ANAPlayerCharacter::ServerWhistle_Implementation()
 	}
 	Horse->CallTo(this);
 	if (PC) { PC->ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("You whistle. Your horse is coming.")); }
+}
+
+void ANAPlayerCharacter::Input_Binoculars()
+{
+	if (bBinocularsUp)
+	{
+		bBinocularsUp = false;
+		return;
+	}
+	if (InventoryComponent && InventoryComponent->CountOf(TEXT("Binoculars")) > 0 && !IsDowned() && !bInventoryOpen)
+	{
+		bBinocularsUp = true;
+		SetAiming(false);
+	}
+	else if (ANAPlayerController* PC = Cast<ANAPlayerController>(GetController()))
+	{
+		PC->ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("You need Binoculars (craft: 4 Scrap + 2 Stone)."));
+	}
 }
 
 void ANAPlayerCharacter::Input_Help()

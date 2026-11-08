@@ -22,7 +22,20 @@ enum class ENAArchetype : uint8
 	Phantom,
 	Hunter,
 	Storm,
-	Guardian
+	Guardian,
+	Engineer
+};
+
+/** Progression skills: 3 ranks each, bought with skill points earned by levelling up. */
+UENUM(BlueprintType)
+enum class ENASkill : uint8
+{
+	Vitality,     // +10 max health per rank
+	Endurance,    // +12% stamina recovery, less sprint drain per rank
+	HuntersEye,   // +8% damage to creatures and bosses per rank
+	Survivalist,  // -12% hunger and thirst drain per rank
+	PowerMastery, // -10% power cooldown, +10% energy recovery per rank
+	Count UMETA(Hidden)
 };
 
 /** Per-player data every client can see: name (engine), score, role. Survives a reconnect. */
@@ -63,6 +76,25 @@ public:
 	static constexpr int32 MaxAshCharges = 3;
 	static constexpr float RebirthCooldownSeconds = 300.f;
 
+	// ----- Progression (server changes, everyone sees) -----
+	static constexpr int32 SkillCount = static_cast<int32>(ENASkill::Count);
+	static constexpr int32 MaxSkillRank = 3;
+	static constexpr int32 MaxLevel = 30;
+	int32 GetPlayerLevel() const { return PlayerLevel; }
+	int32 GetXP() const { return XP; }
+	int32 GetSkillPoints() const { return SkillPoints; }
+	int32 GetSkillRank(ENASkill Skill) const { return SkillRanks.IsValidIndex(static_cast<int32>(Skill)) ? SkillRanks[static_cast<int32>(Skill)] : 0; }
+	static int32 XPForNextLevel(int32 FromLevel) { return 100 + 60 * (FromLevel - 1); }
+	static FString SkillName(ENASkill Skill);
+	static FString SkillDescription(ENASkill Skill);
+	/** Server: returns true if this caused a level-up. */
+	bool GrantXP(int32 Amount);
+	/** Server: spend a point. */
+	bool TryBuySkill(ENASkill Skill);
+	/** Server: restore from a saved record. */
+	void SetProgress(int32 NewLevel, int32 NewXP, int32 NewPoints, const TArray<int32>& NewRanks);
+	const TArray<int32>& GetSkillRanks() const { return SkillRanks; }
+
 	// ----- Class -----
 	ENAArchetype GetArchetype() const { return Archetype; }
 	void SetArchetype(ENAArchetype NewArchetype) { Archetype = NewArchetype; }
@@ -75,5 +107,9 @@ protected:
 	UPROPERTY(Replicated) FString AttunedShrineName;
 	UPROPERTY(Replicated) float AshTouchedUntil = -1.f;
 	UPROPERTY(Replicated) ENAArchetype Archetype = ENAArchetype::Hunter;
+	UPROPERTY(Replicated) int32 PlayerLevel = 1;
+	UPROPERTY(Replicated) int32 XP = 0;
+	UPROPERTY(Replicated) int32 SkillPoints = 0;
+	UPROPERTY(Replicated) TArray<int32> SkillRanks;
 	TWeakObjectPtr<AActor> AttunedShrine;
 };

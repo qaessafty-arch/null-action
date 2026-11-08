@@ -13,6 +13,7 @@ class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
 class ANAPlayerCharacter;
+class UNAInventoryComponent;
 struct FInputActionValue;
 
 /**
@@ -104,34 +105,55 @@ protected:
 
 	static constexpr float MaxStamina = 100.f;
 
-private:
-	UStaticMeshComponent* MakePart(FName PartName, USceneComponent* Parent, UStaticMesh* Shape, const FVector& Location,
-		const FVector& SizeCm, const FRotator& Rotation, TArray<TObjectPtr<UStaticMeshComponent>>& Group);
-	void BuildInput();
-	void Input_Move(const FInputActionValue& Value);
-	void Input_Look(const FInputActionValue& Value);
-	void Input_GallopStarted();
-	void Input_GallopCompleted();
-	void Input_Jump();
-	void Input_Dismount();
+	// Species hooks (ANADeer overrides these).
+	virtual bool CanBeTamed() const { return true; }
+	virtual bool ShouldSpookFrom(const ANAPlayerCharacter* Player, float Distance) const;
+	virtual float GetFleeSpeed() const;
+	virtual void DropLoot();
+	virtual FString GetMountName() const { return TEXT("horse"); }
+	/** Server: take one food item for taming; returns false if the player has none. */
+	virtual bool ConsumeFood(class UNAInventoryComponent* Inventory) const;
+	virtual bool HasFood(const class UNAInventoryComponent* Inventory) const;
+	virtual FString FoodHint() const { return TEXT("bring Berries or Ashroot Herbs"); }
 
-	void Mount(ANAPlayerCharacter* NewRider);
-	void ApplyRiderAttachment(ANAPlayerCharacter* Seated, bool bSeat);
-	void ThinkServer(float DeltaSeconds);
-	void UpdateSpeed();
-	float TerrainSpeedFactor() const;
-	void AnimateBody(float DeltaSeconds);
+	// Movement / input hooks (ANASkyMount flies).
+	virtual void ThinkServer(float DeltaSeconds);
+	virtual void UpdateSpeed();
+	virtual void AnimateBody(float DeltaSeconds);
+	virtual void Input_Move(const FInputActionValue& Value);
+	virtual void Input_Jump();
+	virtual void Input_JumpReleased() {}
+	virtual void Input_DescendStarted() {}
+	virtual void Input_DescendCompleted() {}
+	virtual void Input_Dismount();
 	void MoveToward(const FVector& Destination, float Scale);
+	float TerrainSpeedFactor() const;
 
-	FString OwnerId;
+	UPROPERTY(Transient) TObjectPtr<UInputAction> DescendAction;
+
+	// Wild/tamed state shared with subclasses.
 	FVector HerdCenter = FVector::ZeroVector;
-	FVector WanderTarget = FVector::ZeroVector;
-	float NextWanderTime = 0.f;
+	TWeakObjectPtr<APawn> CallTarget;
+	float CallUntil = 0.f;
 	float FleeUntil = 0.f;
 	FVector FleeDirection = FVector::ForwardVector;
 	float EatUntil = 0.f;
-	TWeakObjectPtr<APawn> CallTarget;
-	float CallUntil = 0.f;
+
+	UStaticMeshComponent* MakePart(FName PartName, USceneComponent* Parent, UStaticMesh* Shape, const FVector& Location,
+		const FVector& SizeCm, const FRotator& Rotation, TArray<TObjectPtr<UStaticMeshComponent>>& Group);
+
+private:
+	void BuildInput();
+	void Input_Look(const FInputActionValue& Value);
+	void Input_GallopStarted();
+	void Input_GallopCompleted();
+
+	void Mount(ANAPlayerCharacter* NewRider);
+	void ApplyRiderAttachment(ANAPlayerCharacter* Seated, bool bSeat);
+
+	FString OwnerId;
+	FVector WanderTarget = FVector::ZeroVector;
+	float NextWanderTime = 0.f;
 	float GaitPhase = 0.f;
 	/** Clients: who this machine currently shows in the saddle (to undo it when Rider changes). */
 	TWeakObjectPtr<ANAPlayerCharacter> SeatedLocally;

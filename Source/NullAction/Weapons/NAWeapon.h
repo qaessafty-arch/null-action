@@ -47,6 +47,9 @@ struct FNAWeaponStats
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aim") float AimFieldOfView = 60.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aim") float AimArmLength = 170.f;
 
+	/** Durability lost per shot (players' weapons only). Below 25% the gun is inaccurate; at 0 it won't fire until repaired. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Durability") float WearPerShot = 0.12f;
+
 	/** How far AI can hear the shot, relative to a gunshot (1). The bow is nearly silent. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hunting") float NoiseLoudness = 1.f;
 	/** Damage multiplier against creatures (hunting weapons hit harder). */
@@ -94,6 +97,11 @@ public:
 	void OnUnequipped();
 	int32 AddReserveAmmo(int32 Amount);
 
+	/** 0..100. Server only to change. */
+	float GetDurability() const { return Durability; }
+	bool IsBroken() const { return Durability <= 0.f; }
+	void Repair() { Durability = 100.f; }
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Weapon")
 	FNAWeaponStats Stats;
@@ -128,6 +136,9 @@ protected:
 
 	UPROPERTY(Replicated)
 	bool bReloading = false;
+
+	UPROPERTY(Replicated)
+	float Durability = 100.f;
 
 	UFUNCTION(Server, Reliable)
 	void ServerFire(FVector_NetQuantize ViewLocation, FVector_NetQuantizeNormal ViewDirection);

@@ -14,11 +14,16 @@ class NULLACTION_API UNAPlayerRecord : public USaveGame
 	GENERATED_BODY()
 
 public:
-	UPROPERTY() int32 Version = 1;
+	UPROPERTY() int32 Version = 2;
 	UPROPERTY() FString LastKnownName;
 	UPROPERTY() int32 Kills = 0;
 	UPROPERTY() int32 Deaths = 0;
 	UPROPERTY() float PlaySeconds = 0.f;
 	UPROPERTY() FDateTime FirstSeen;
 	UPROPERTY() FDateTime LastSeen;
+	// Version 2: progression.
+	UPROPERTY() int32 Level = 1;
+	UPROPERTY() int32 XP = 0;
+	UPROPERTY() int32 SkillPoints = 0;
+	UPROPERTY() TArray<int32> SkillRanks;
 };

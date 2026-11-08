@@ -27,6 +27,9 @@
 #include "Interaction/NAAshShrine.h"
 #include "Creatures/NABoss.h"
 #include "Creatures/NAHorse.h"
+#include "Creatures/NAWolf.h"
+#include "Creatures/NADeer.h"
+#include "Creatures/NASkyMount.h"
 #include "Core/NAPlayerState.h"
 #include "Combat/NAHealthComponent.h"
 #include "GameFramework/GameStateBase.h"
@@ -336,6 +339,33 @@ void ANAGameMode::SpawnArenaContent()
 			SpawnWildHorse();
 		}
 	}
+
+	// Whispering Pines (south-west): a wolf pack's den, and deer grazing nearby.
+	{
+		const FVector2D Den(-11000.f, -8000.f);
+		WolfDenLocation = FVector(Den.X, Den.Y, NATerrain::HeightAt(Den.X, Den.Y) + 60.f);
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			SpawnWolf();
+		}
+		const FVector2D Herd(-7000.f, -3500.f);
+		DeerHerdCenter = FVector(Herd.X, Herd.Y, NATerrain::HeightAt(Herd.X, Herd.Y) + 90.f);
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			SpawnDeer();
+		}
+	}
+
+	// Ash Glider roost on the Grey Peaks foothills (north-east).
+	{
+		const FVector2D Roost(14500.f, -4000.f);
+		SkyRoostLocation = FVector(Roost.X, Roost.Y, NATerrain::HeightAt(Roost.X, Roost.Y) + 120.f);
+		SpawnSkyMount();
+		SpawnSkyMount();
+	}
+
+	ScheduleNextWorldEvent(240.f); // First world event a few minutes in.
+	SpawnShipwreck();
 }
 
 void ANAGameMode::SpawnBoss()
@@ -364,10 +394,63 @@ void ANAGameMode::SpawnWildHorse()
 	}
 }
 
-void ANAGameMode::OnHorseKilled(ANAHorse* Horse)
+void ANAGameMode::OnHorseKilled(ANAHorse* Horse, AController* Killer)
 {
 	FTimerHandle Handle;
+	if (Horse && Horse->IsA<ANASkyMount>())
+	{
+		GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnSkyMount, 400.f, false);
+		return;
+	}
+	if (Horse && Horse->IsA<ANADeer>())
+	{
+		AwardXP(Killer, 20, TEXT("Deer"));
+		GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnDeer, 180.f, false);
+		return;
+	}
 	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnWildHorse, 300.f, false);
+}
+
+void ANAGameMode::SpawnSkyMount()
+{
+	const FVector2D Offset = FMath::RandPointInCircle(500.f);
+	const float X = SkyRoostLocation.X + Offset.X;
+	const float Y = SkyRoostLocation.Y + Offset.Y;
+	const FTransform Where(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), FVector(X, Y, NATerrain::HeightAt(X, Y) + 140.f));
+	if (ANASkyMount* Glider = GetWorld()->SpawnActorDeferred<ANASkyMount>(ANASkyMount::StaticClass(), Where, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Glider->SetHerdCenter(SkyRoostLocation);
+		Glider->FinishSpawning(Where);
+	}
+}
+
+void ANAGameMode::SpawnWolf()
+{
+	const FVector2D Offset = FMath::RandPointInCircle(600.f);
+	const float X = WolfDenLocation.X + Offset.X;
+	const float Y = WolfDenLocation.Y + Offset.Y;
+	const FTransform Where(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), FVector(X, Y, NATerrain::HeightAt(X, Y) + 80.f));
+	if (ANAWolf* Wolf = GetWorld()->SpawnActorDeferred<ANAWolf>(ANAWolf::StaticClass(), Where, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Wolf->SetDenLocation(WolfDenLocation);
+		Wolf->FinishSpawning(Where);
+	}
+}
+
+void ANAGameMode::SpawnDeer()
+{
+	const FVector2D Offset = FMath::RandPointInCircle(900.f);
+	const float X = DeerHerdCenter.X + Offset.X;
+	const float Y = DeerHerdCenter.Y + Offset.Y;
+	const FTransform Where(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), FVector(X, Y, NATerrain::HeightAt(X, Y) + 90.f));
+	if (ANADeer* Deer = GetWorld()->SpawnActorDeferred<ANADeer>(ANADeer::StaticClass(), Where, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Deer->SetHerdCenter(DeerHerdCenter);
+		Deer->FinishSpawning(Where);
+	}
 }
 
 void ANAGameMode::OnBossKilled(ANABoss* Boss, AController* Killer)
@@ -385,6 +468,16 @@ void ANAGameMode::OnBossKilled(ANABoss* Boss, AController* Killer)
 		State->BroadcastKill(DisplayNameOf(nullptr, Killer), ANABoss::BossName());
 	}
 	BroadcastSystemMessage(FString::Printf(TEXT("%s has slain the ASHEN BEHEMOTH! Its heart lies in the Ash Crater."), *DisplayNameOf(nullptr, Killer)));
+	// Everyone who fought nearby shares the reward.
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* Fighter = It->Get();
+		const APawn* FighterPawn = Fighter ? Fighter->GetPawn() : nullptr;
+		if (FighterPawn && FVector::Dist(FighterPawn->GetActorLocation(), Boss->GetActorLocation()) < 8000.f)
+		{
+			AwardXP(Fighter, 500, TEXT("Ashen Behemoth"));
+		}
+	}
 	Boss->SetLifeSpan(120.f);
 	FTimerHandle Handle;
 	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnBoss, BossRespawnSeconds, false);
@@ -507,11 +600,17 @@ void ANAGameMode::OnCreatureKilled(ANACreature* Creature, AController* Killer)
 	}
 	if (ANAGameState* State = GetGameState<ANAGameState>())
 	{
-		State->BroadcastKill(DisplayNameOf(nullptr, Killer), TEXT("Ash Stalker"));
+		State->BroadcastKill(DisplayNameOf(nullptr, Killer), Creature->GetSpeciesName());
 	}
+	AwardXP(Killer, Creature->GetXPReward(), Creature->GetSpeciesName());
 	Creature->SetLifeSpan(CorpseLifeSeconds * 2.f);
 	FTimerHandle Handle;
-	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnCreature, CreatureRespawnSeconds, false);
+	switch (Creature->GetSpawnGroup())
+	{
+	case 0:  GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnCreature, CreatureRespawnSeconds, false); break;
+	case 1:  GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnWolf, CreatureRespawnSeconds * 2.f, false); break;
+	default: OnEventCreatureKilled(Creature, Killer); break; // World-event creature: no respawn.
+	}
 }
 
 void ANAGameMode::SpawnEnemy(int32 PostIndex)
@@ -576,6 +675,7 @@ void ANAGameMode::OnCharacterKilled(ANACharacterBase* Victim, AController* Kille
 	// Enemy soldiers: a replacement arrives at the same post after a while.
 	if (ANAEnemySoldier* Soldier = Cast<ANAEnemySoldier>(Victim))
 	{
+		AwardXP(Killer, 25, TEXT("Soldier"));
 		Victim->SetLifeSpan(CorpseLifeSeconds);
 		if (const int32* PostIndex = EnemyPostByActor.Find(Soldier))
 		{

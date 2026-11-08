@@ -1,6 +1,92 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v1.4: Milestone 5E (wild horses: taming, riding, whistle) written, not yet built. **v1.3 builds and runs on the owner's PC (confirmed 2026-11-08)**, which also confirms that 5B, 5C, 5D and the visual pass compile. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — **v2.0: the big Stage 5 update** (survival conditions, progression, wolves/deer, world events, rarity loot, shipwreck, binoculars, Engineer class, Ash Glider flying mount) on top of 5E horses (v1.4). Written in one batch at the owner's request; **not yet built**. Last confirmed build: v1.3. 3B waits on the owner's Epic/Google developer accounts._
+
+## v2.0: the big Stage 5 update (owner asked for one massive update)
+
+Status: **written, not yet compiled or tested (v2.0).** This is a large batch, so the first build may well report errors; send the log and they'll be fixed quickly.
+
+### Survival
+- **Fatigue (REST bar):** drains over ~50 minutes awake, faster when sprinting. Below 25% stamina recovers slowly (worse at 0). Restore it by standing still beside a campfire; an Ember Tonic restores it fully.
+- **Bleeding:** heavy hits (20+ damage, 30% chance) and animal bites (50%) open a wound (0.6 HP/s). A **Bandage** stops it. Untreated for 90 s it becomes an **Infection**.
+- **Poison:** eating Raw Meat has a 30% chance to poison you for 40 s (0.5 HP/s, double thirst, weak stamina). **Antidote** (2 Herbs + 1 Berries) cures it. Cook your meat.
+- **Infection:** 0.15 HP/s and half stamina recovery until **Medicine** (4 Herbs + 2 Berries at a campfire; also heals 20).
+- **Weapon durability:** every shot wears your gun (shotgun and sniper faster; AI guns don't wear). Below 25% it's inaccurate; at 0 it won't fire. **Repair Kit** (3 Scrap + 1 Wood) restores the gun in your hands. Durability bar under the ammo counter.
+- **Protective gear:** **Fur Coat** (3 Wolf Pelts + 1 Deer Hide) halves cold; **Rebreather** (6 Scrap + 2 Deer Hide + 1 Ember Cell, or shipwreck loot) makes your breath last 4x longer underwater.
+- **Survival difficulty:** `SurvivalDifficulty=Easy|Normal|Hard` in DefaultGame.ini, or owner command `NASurvival Easy|Normal|Hard` (needs drain x0.5 / x1 / x1.6).
+
+### Progression
+- **XP** from: soldiers 25, Ash Stalker 60, wolf 30, deer 20, boss 500 (everyone within 80 m), taming 50, reviving 40, skinning 10, crafting 5, world events 150 (Ember Storm survivors 75). "+XP" pops up on screen; an XP bar runs along the bottom edge.
+- **Levels 1-30**, one **skill point** per level. **K** opens the Skills tab (also the third tab of the I menu). Up/Down, Enter to learn:
+  - Vitality: +10 max health per rank
+  - Endurance: +12% stamina recovery and less sprint drain per rank
+  - Hunter's Eye: +8% damage to creatures and bosses per rank
+  - Survivalist: -12% hunger and thirst drain per rank
+  - Power Mastery: -10% power cooldown and +10% energy recovery per rank
+  - 3 ranks each, so 15 points max. Gains are capped on purpose so high levels aren't unbeatable.
+- Saved in the server-side player record (version 2), on level-up and on logout. Console: `NASkill Vitality`. Owner testing: `NAGiveXP 1000`.
+
+### Wildlife
+- **Grey Wolf pack** (3, den in the Whispering Pines, south-west). Smaller, faster, weaker than the Ash Stalker. When one spots you, packmates within 30 m join the hunt and flank. Drops Wolf Pelt and meat.
+- **Deer** (4, near the pines). Very skittish: anything faster than a crouch within 16 m makes them bolt. Can't be tamed. Drops meat and Deer Hide.
+- Skinning works on wolves too (pelt instead of hide). Tracks show the right species name. Kill feed and XP use species names.
+
+### World events (every 8-12 minutes, first one ~4 min in)
+Objective panel top-left with a timer; a marker and distance in the world.
+- **Creature Sighting:** an alpha Ash Stalker (bigger, 450 HP). Kill it for XP and a Rare or Epic drop.
+- **Supply Drop:** a high-quality crate somewhere out there. The first player to open it wins.
+- **Distress Signal:** switch on the beacon (E). It transmits for 45 s and draws 3 soldiers; hold the area and supplies drop.
+- **Ember Storm:** a thunderstorm with falling embers. Red circles appear near players and burst 1.6 s later (30 damage). Survivors get XP.
+- Owner: `NAEvent sighting|supply|beacon|storm` starts one now.
+
+### Loot rarity
+Items have tiers: Common, **Uncommon (green)**, **Rare (blue)**, **Epic (purple)** and **Legendary (orange)**, shown in the inventory and crafting lists.
+- Crates roll a bonus item: Common 55%, Uncommon 30%, Rare 12%, Epic 3%.
+- High-quality crates (supply drops and the shipwreck) give Rare or better plus an **Ember Cell** (new rare resource; Ash Stalkers also drop one 15% of the time).
+- All rolls are made on the server.
+
+### Exploration and gear
+- **Shipwreck** at the bottom of Mirror Lake (~6 m down, south-east part of the lake), with a high-quality crate inside.
+- **Binoculars** (4 Scrap + 2 Stone): carry them and press **B** to zoom (moving lowers them). The scan shows the creature, boss, mount or soldier you're looking at: its state, health %, distance, weak spot and counter-tips.
+
+### Engineer (5th class)
+`NAClass Engineer`. **Q: Energy Barrier**, a 3 x 2.2 m shield wall in front of you that stops bullets, creatures and players for 10 s (300 health, so focused fire breaks it). 50 energy, 22 s cooldown.
+
+### Ash Glider (flying mount)
+- Two roost on the Grey Peaks foothills (north-east, around X 14500, Y -4000). They perch, then take off and circle high above the roost, then land again. Running near one makes it take off.
+- **Tame it while it's perched:** walk up and feed it Raw or Cooked Meat 3 times. Only the owner can ride it.
+- **Riding:**
+  - On the ground, **Space** takes off.
+  - In the air: **W** flies where you look, **A/D** strafe, **Space** climbs, **C** dives, **Shift** boosts.
+  - With no input it glides and slowly sinks.
+  - Below 1.6 m it lands by itself; **E** lands when near the ground and dismounts once landed.
+- **Stamina:** climbing and boosting cost stamina; gliding recovers it. At 0 it can only glide down.
+- **Weather:** thunderstorms, blizzards, dust storms and wind buffet and slow it, and the HUD warns you.
+- **Whistle:** H calls your mount (horse or glider).
+- **Riding HUD:** altitude, mode, stamina and controls.
+- Owner: `NASpawn wolf|deer|glider`.
+
+### Honest limits
+- All new creatures and gear are built from engine shapes with code animation; there are no sculpted models, sounds or particle effects yet.
+- No aquatic monsters or underwater caves yet; the shipwreck is the first underwater content.
+- No crafting stations beyond the campfire, no base storage, no horse saddlebags.
+- Companions only follow when whistled; there are no stay or attack commands.
+- Engineer has one power. Powers have no upgrade tree of their own; Power Mastery scales them.
+- No automated tests yet. All of this needs the in-game checklist below.
+
+### v2.0 test checklist
+- [ ] Builds; F1 panel shows `dev build 2.0`
+- [ ] REST bar drains; standing still by a campfire refills it
+- [ ] Take a soldier's burst → sometimes BLEEDING; a Bandage stops it. Eat raw meat a few times → POISONED; an Antidote cures it
+- [ ] Fire a gun a lot → the durability bar drops; a Repair Kit restores it
+- [ ] Kill things → "+XP"; level up → message and skill point; K → learn Vitality → max health goes up
+- [ ] Leave and rejoin → level and skills are still there
+- [ ] Wolves south-west hunt as a pack; deer bolt unless you crouch
+- [ ] `NAEvent supply` → marker → open the crate → event complete + rare item. Try `NAEvent storm` and `NAEvent beacon`
+- [ ] Craft Binoculars, press B on a creature → scan panel
+- [ ] Dive to the shipwreck in the lake (bring a Rebreather or come up for air) and open its crate
+- [ ] `NAClass Engineer`, Q → shield wall stops bullets
+- [ ] Find an Ash Glider, feed it meat 3x, ride it, take off, climb, dive, land. Fly in a storm (`NAWeather Thunderstorm`) and feel the gusts
 
 ## Milestone 5E: wild horses: taming and riding (Stage 5, part 5)
 

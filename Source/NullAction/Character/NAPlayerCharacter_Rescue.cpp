@@ -8,6 +8,11 @@
 #include "Components/CapsuleComponent.h"
 #include "Core/NAPlayerState.h"
 #include "Creatures/NAHorse.h"
+#include "Core/NAGameMode.h"
+#include "Creatures/NACreature.h"
+#include "Creatures/NABoss.h"
+#include "Survival/NASurvivalComponent.h"
+#include "Engine/DamageEvents.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/GameStateBase.h"
@@ -23,6 +28,43 @@ namespace NARescue
 	constexpr float RecoverySeconds = 20.f;
 	constexpr float CarrySpeedMultiplier = 0.6f;
 	constexpr float WeakSpeedMultiplier = 0.85f;
+}
+
+void ANAPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	ApplyProgression();
+}
+
+void ANAPlayerCharacter::ApplyProgression()
+{
+	const ANAPlayerState* State = GetPlayerState<ANAPlayerState>();
+	UNAHealthComponent* Health = GetHealthComponent();
+	if (!HasAuthority() || !State || !Health || IsDead())
+	{
+		return;
+	}
+	const float Wanted = 100.f + 10.f * State->GetSkillRank(ENASkill::Vitality);
+	if (!FMath::IsNearlyEqual(Health->GetMaxHealth(), Wanted))
+	{
+		Health->SetMaxHealthKeepFraction(Wanted);
+	}
+}
+
+float ANAPlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float Dealt = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	// Heavy hits and animal bites can open a bleeding wound.
+	if (Dealt > 0.f && !IsDead() && SurvivalComponent)
+	{
+		const bool bBite = DamageCauser && (DamageCauser->IsA<ANACreature>() || DamageCauser->IsA<ANABoss>());
+		const float Chance = bBite ? 0.5f : (Dealt >= 20.f ? 0.3f : 0.f);
+		if (FMath::FRand() < Chance)
+		{
+			SurvivalComponent->StartBleeding();
+		}
+	}
+	return Dealt;
 }
 
 void ANAPlayerCharacter::SetMountedHorse(ANAHorse* Horse)
@@ -120,6 +162,10 @@ void ANAPlayerCharacter::Interact(ANACharacterBase* User)
 	if (ReviveProgress >= 1.f)
 	{
 		CompleteRevive();
+		if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
+		{
+			GameMode->AwardXP(Helper->GetController(), 40, TEXT("Revived a teammate"));
+		}
 	}
 }
 
