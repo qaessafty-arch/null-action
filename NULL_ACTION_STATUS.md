@@ -1,10 +1,10 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — Milestone 2C (Ash Stalker creature) written. 2A compiles and works on owner's PC; 2B and 2C not yet built._
+_Last updated: 2026-11-08 — v0.4 (2A + 2B + 2C) compiles and runs on owner's PC (owner report: "working"). Next: 2D advanced movement._
 
 ## Milestone 2C: first creature, the ASH STALKER (Stage 2, part 3)
 
-Status: **written, not yet compiled or tested.**
+Status: ✅ **Compiles and runs on owner's PC (v0.4)**; owner reports it working. Per-item checklist results not given.
 
 An original predator: low, long body; a row of ember-glowing spines down the back; glowing eyes; a long swaying tail. **Weak point: the head and eyes** (head-shot multiplier). 220 health.
 
@@ -39,7 +39,7 @@ HUD: **"!! SOMETHING IS HUNTING YOU"** when it charges you; a faint **"...you fe
 
 ## Milestone 2B: enemy soldier AI (Stage 2, part 2)
 
-Status: **written, not yet compiled or tested.** Build and test together with 2A.
+Status: ✅ **Compiles and runs on owner's PC (v0.4)**; owner reports it working. Per-item checklist results not given.
 
 Architecture: Behavior Tree / State Tree assets are editor-made `.uasset` files that can't be authored from the cloud workspace, so the soldier's brain is a C++ state machine (`AI/NAEnemyAIController`) on Unreal's **AI Perception** (sight + hearing). It runs only on the server; clients see the result through normal character replication.
 
