@@ -31,6 +31,7 @@ private:
 	// NAHUD_Powers.cpp
 	void DrawPowers(class ANAPlayerCharacter* Player, float ScreenW, float ScreenH);
 	void DrawDeathScreen(float ScreenW, float ScreenH);
+	void DrawMounted(class ANAHorse* Horse, float ScreenW, float ScreenH);
 	bool ProjectToScreen(const FVector& WorldLocation, FVector2D& OutScreen) const;
 
 	bool bShowScoreboard = false;

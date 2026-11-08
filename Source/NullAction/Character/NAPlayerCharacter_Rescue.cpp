@@ -7,6 +7,7 @@
 #include "Weapons/NAWeapon.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/NAPlayerState.h"
+#include "Creatures/NAHorse.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/GameStateBase.h"
@@ -22,6 +23,16 @@ namespace NARescue
 	constexpr float RecoverySeconds = 20.f;
 	constexpr float CarrySpeedMultiplier = 0.6f;
 	constexpr float WeakSpeedMultiplier = 0.85f;
+}
+
+void ANAPlayerCharacter::SetMountedHorse(ANAHorse* Horse)
+{
+	MountedHorse = Horse;
+}
+
+ANAHorse* ANAPlayerCharacter::GetMountedHorse() const
+{
+	return MountedHorse.Get();
 }
 
 float ANAPlayerCharacter::ServerTimeNow() const
@@ -279,6 +290,13 @@ void ANAPlayerCharacter::OnFiredWeaponHook()
 void ANAPlayerCharacter::OnDownedChanged(bool bNowDowned)
 {
 	Super::OnDownedChanged(bNowDowned);
+	if (bNowDowned && HasAuthority())
+	{
+		if (ANAHorse* Horse = MountedHorse.Get())
+		{
+			Horse->Dismount(); // Thrown from the saddle.
+		}
+	}
 	if (bNowDowned)
 	{
 		if (bBuildMode) { StopBuilding(); }

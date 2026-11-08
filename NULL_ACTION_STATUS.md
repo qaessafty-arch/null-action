@@ -1,10 +1,37 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v1.3: visual pass (new HUD, human stand-in body, clouds/colour grade/ground cover) on top of 5D (Ashen Behemoth boss, v1.2) and 5C. Written, not yet built. Last confirmed build: v0.8. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v1.4: Milestone 5E (wild horses: taming, riding, whistle) written, not yet built. **v1.3 builds and runs on the owner's PC (confirmed 2026-11-08)**, which also confirms that 5B, 5C, 5D and the visual pass compile. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 5E: wild horses: taming and riding (Stage 5, part 5)
+
+Status: **written, not yet compiled or tested (v1.4).**
+
+- **Wild herd**: 4 horses (bay, black, grey or chestnut) graze on the grassland west of the arena (around X 2500, Y -9500). They wander, lower their heads to graze, and **bolt** if anyone moves faster than a walk within 14 m (or shoots them). A cloaked Phantom doesn't spook them. Dead horses drop meat and are replaced after 5 minutes.
+- **Taming**: walk (Alt) or crouch up to one, press **E** with **Berries or Ashroot Herbs** to feed it. Each feed adds 34% trust; spooking it costs trust. Three feeds tame it. It's yours (tied to your account id), and a saddle and bridle appear on it.
+- **Riding**: **E** on your horse mounts it (only the owner can). Your controller steers the horse.
+  - **WASD:** trot (~20 km/h).
+  - **Shift:** gallop (~39 km/h); drains the horse's stamina, and it's winded at 0.
+  - **Space:** jump. **E:** dismount on the left side.
+  - Steep slopes slow it (down to 55%); wading through water slows it to 45%.
+  - If you're knocked down or the horse dies, you're thrown off.
+- **Whistle**: **H** calls your horse to you from up to 150 m.
+- **Riding HUD**: compass, your health, food and water, the horse's health and stamina, speed in km/h, and controls.
+- **Owner/admin**: `NASpawn horse` spawns a wild horse where you're looking.
+
+Honest limits: you can't shoot from the saddle yet. The stand-in body sits astride, but the real mannequin, if installed, stands in the saddle until a riding animation is added. Horse ownership isn't saved across server restarts yet. Customisation is coat colour only (random). Flying mounts come next.
+
+### 5E test checklist
+- [ ] Builds; F1 panel shows `dev build 1.4` and a Horses line
+- [ ] Find the herd west of the arena. Sprint at them → they bolt. Walk up (Alt) → they stay
+- [ ] `NAGive Berries 5`, E three times on one horse → "You tamed a ... horse!", saddle appears
+- [ ] E to ride; the riding HUD appears. Shift gallops and stamina drains; Space jumps; E dismounts and your normal controls come back
+- [ ] Ride up a steep hill or into the lake → it slows
+- [ ] Walk 50 m away, press H → your horse comes to you
+- [ ] Two players: the second player can't ride your horse
 
 ## Visual pass (owner request): new HUD, better character, better world (v1.3)
 
-Status: **written, not yet compiled or tested (v1.3).**
+Status: **builds and runs on owner's PC (v1.3, 2026-11-08).** Individual checklist items not yet reported.
 
 **Character.** The stand-in body was a cylinder with a block for a face. It is now a **jointed human figure** made from engine shapes: helmet, goggles, olive jacket and vest, backpack, arms, legs, knee pads and boots. It animates in code:
 - **Movement:** walk and run strides with arm swing, a forward lean when sprinting, and folded legs when crouched.
@@ -47,7 +74,7 @@ Honest limits: the jointed body is still a stand-in, and the real fix is the fre
 
 ## Milestone 5D: first boss, the ASHEN BEHEMOTH (Stage 5, part 4)
 
-Status: **written, not yet compiled or tested (v1.2).**
+Status: **compiles (confirmed with the v1.3 build on owner's PC); gameplay checklist not yet reported.**
 
 - **Ash Crater** (new region, east of the arena and north of the Old Cabin, around X 12500, Y 6500): a flat ash bowl with a raised rim, no trees.
 - **Ashen Behemoth**: a ~5 m armored four-legged beast built from engine shapes (an original design). It sleeps until a player comes within 22 m or shoots it, then everyone gets the message "The ASHEN BEHEMOTH has awoken".
@@ -75,7 +102,7 @@ Honest limits: the boss walks straight at its target (no pathfinding around big 
 
 ## Milestone 5C: hunting equipment and tracking (Stage 5, part 3)
 
-Status: **written, not yet compiled or tested (v1.1).**
+Status: **compiles (confirmed with the v1.3 build on owner's PC); gameplay checklist not yet reported.**
 
 New craftable gear (I → Crafting tab):
 | Item | Recipe | What it does |
@@ -104,7 +131,7 @@ Honest limits: the bow uses the same instant-hit trace as the guns (no arrow dro
 
 ## Milestone 5B: downed & revive, carrying, ASH REBIRTH and class powers (Stage 5, part 2)
 
-Status: **written, not yet compiled or tested (v1.0).**
+Status: **compiles (confirmed with the v1.3 build on owner's PC); gameplay checklist not yet reported.**
 
 What was added (all server-authoritative; clients only ask):
 - **Downed state (players only).** At 0 health you go down instead of dying: you crawl slowly, can't shoot, aim, sprint, jump, build or use your power, and you bleed out over ~30 s. Damage while down finishes you. Soldiers stop targeting downed players so teammates get a chance; creatures do not.

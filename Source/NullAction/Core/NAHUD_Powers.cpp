@@ -7,6 +7,8 @@
 #include "Core/NAPlayerState.h"
 #include "Creatures/NACreature.h"
 #include "Creatures/NABoss.h"
+#include "Creatures/NAHorse.h"
+#include "Survival/NASurvivalComponent.h"
 #include "Hunting/NACreatureTrack.h"
 #include "AI/NAEnemySoldier.h"
 #include "Engine/Canvas.h"
@@ -68,6 +70,45 @@ void ANAHUD::DrawDeathScreen(float ScreenW, float ScreenH)
 	{
 		DrawText(TEXT("Respawning...   Your items were dropped where you fell."), PowerText, CenterX - 200.f, CenterY + 15.f, nullptr, 1.1f);
 	}
+}
+
+void ANAHUD::DrawMounted(ANAHorse* Horse, float ScreenW, float ScreenH)
+{
+	const float CenterX = ScreenW * 0.5f;
+	const ANAPlayerCharacter* Rider = Horse->GetRider();
+
+	// Rider vitals (bottom-left).
+	const float BarX = 28.f;
+	float BarY = ScreenH - 96.f;
+	DrawPanel(BarX - 12.f, BarY - 10.f, 350.f, ScreenH - BarY - 4.f);
+	if (const UNAHealthComponent* RiderHealth = Rider ? Rider->GetHealthComponent() : nullptr)
+	{
+		DrawBar(BarX, BarY, 220.f, 18.f, RiderHealth->GetHealth() / FMath::Max(RiderHealth->GetMaxHealth(), 1.f),
+			FLinearColor(0.8f, 0.12f, 0.1f), FString::Printf(TEXT("HEALTH %.0f"), RiderHealth->GetHealth()));
+		BarY += 24.f;
+	}
+	if (const UNASurvivalComponent* Survival = Rider ? Rider->GetSurvivalComponent() : nullptr)
+	{
+		DrawBar(BarX, BarY, 110.f, 10.f, Survival->GetHungerFraction(), FLinearColor(0.85f, 0.45f, 0.1f), TEXT("FOOD"));
+		BarY += 16.f;
+		DrawBar(BarX, BarY, 110.f, 10.f, Survival->GetThirstFraction(), FLinearColor(0.15f, 0.65f, 0.85f), TEXT("WATER"));
+	}
+
+	// Horse panel (bottom centre).
+	const float PanelX = CenterX - 170.f;
+	const float PanelY = ScreenH - 118.f;
+	DrawPanel(PanelX - 10.f, PanelY - 8.f, 360.f, 92.f);
+	DrawText(Horse->IsGalloping() ? TEXT("HORSE  -  GALLOP") : TEXT("HORSE"), AshColor, PanelX, PanelY, nullptr, 1.f);
+	if (const UNAHealthComponent* HorseHealth = Horse->GetHealthComponent())
+	{
+		DrawBar(PanelX, PanelY + 20.f, 340.f, 14.f, HorseHealth->GetHealth() / FMath::Max(HorseHealth->GetMaxHealth(), 1.f),
+			FLinearColor(0.7f, 0.2f, 0.12f), FString::Printf(TEXT("HEALTH %.0f"), HorseHealth->GetHealth()));
+	}
+	const float HorseStamina = Horse->GetStaminaFraction();
+	DrawBar(PanelX, PanelY + 40.f, 340.f, 14.f, HorseStamina, HorseStamina < 0.2f ? FLinearColor(0.6f, 0.45f, 0.1f) : FLinearColor(0.95f, 0.8f, 0.2f),
+		HorseStamina < 0.05f ? TEXT("WINDED") : TEXT("STAMINA"));
+	DrawText(TEXT("WASD ride   Shift gallop   Space jump   E dismount"), PowerText, PanelX, PanelY + 62.f, nullptr, 0.8f);
+	DrawText(FString::Printf(TEXT("%.0f km/h"), Horse->GetVelocity().Size2D() * 0.036f), PowerText, ScreenW - 140.f, ScreenH - 60.f, nullptr, 1.2f);
 }
 
 void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH)

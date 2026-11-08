@@ -2,6 +2,7 @@
 // admin commands and server-side player records. Everything here runs on the server only.
 
 #include "Core/NAGameMode.h"
+#include "Creatures/NAHorse.h"
 
 #include "NullAction.h"
 #include "AI/NAEnemySoldier.h"
@@ -525,9 +526,18 @@ void ANAGameMode::HandleAdminCommand(ANAPlayerController* Caller, ENAAdminComman
 		{
 			GetWorld()->SpawnActor<ANATrainingDummy>(ANATrainingDummy::StaticClass(), SpawnTransform, Params);
 		}
+		else if (Arg1.Equals(TEXT("horse"), ESearchCase::IgnoreCase))
+		{
+			if (ANAHorse* Horse = GetWorld()->SpawnActorDeferred<ANAHorse>(ANAHorse::StaticClass(), SpawnTransform,
+				nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+			{
+				Horse->SetCoat(static_cast<uint8>(FMath::RandRange(0, 3)));
+				Horse->FinishSpawning(SpawnTransform); // Wild; it grazes around where it was spawned.
+			}
+		}
 		else
 		{
-			SystemMessage(Caller, TEXT("Usage: NASpawn soldier | creature | dummy"));
+			SystemMessage(Caller, TEXT("Usage: NASpawn soldier | creature | dummy | horse"));
 		}
 		break;
 	}

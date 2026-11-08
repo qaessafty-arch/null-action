@@ -25,6 +25,9 @@
 #include "World/NAWaterVolume.h"
 #include "World/NAWorldEnvironment.h"
 #include "Core/NAHUD.h"
+#include "Core/NAPlayerController.h"
+#include "Core/NAPlayerState.h"
+#include "Creatures/NAHorse.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
@@ -146,7 +149,7 @@ bool ANAPlayerCharacter::IsCameraUnderwater() const
 void ANAPlayerCharacter::UpdateSwimming()
 {
 	// The server and the owning client both decide from the same position, so they agree.
-	if ((!HasAuthority() && !IsLocallyControlled()) || CarriedBy)
+	if ((!HasAuthority() && !IsLocallyControlled()) || CarriedBy || IsMounted())
 	{
 		return;
 	}
@@ -526,6 +529,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
 	HelpAction = MakeAction(TEXT("IA_Help"), EInputActionValueType::Boolean);
+	WhistleAction = MakeAction(TEXT("IA_Whistle"), EInputActionValueType::Boolean);
 	InventoryAction = MakeAction(TEXT("IA_Inventory"), EInputActionValueType::Boolean);
 	MenuUpAction = MakeAction(TEXT("IA_MenuUp"), EInputActionValueType::Boolean);
 	MenuDownAction = MakeAction(TEXT("IA_MenuDown"), EInputActionValueType::Boolean);
@@ -611,6 +615,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(DodgeAction, EKeys::Gamepad_RightThumbstick);
 	IMC->MapKey(ScoreboardAction, EKeys::Tab);
 	IMC->MapKey(HelpAction, EKeys::F1);
+	IMC->MapKey(WhistleAction, EKeys::H);
 	IMC->MapKey(ScoreboardAction, EKeys::Gamepad_Special_Left);
 	IMC->MapKey(InventoryAction, EKeys::I);
 	IMC->MapKey(InventoryAction, EKeys::Gamepad_Special_Right);
@@ -655,6 +660,7 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	if (MenuConfirmAction) { Input->BindAction(MenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuConfirm); }
 	if (AbilityAction)     { Input->BindAction(AbilityAction, ETriggerEvent::Started, this, &ThisClass::Input_Ability); }
 	if (HelpAction)        { Input->BindAction(HelpAction, ETriggerEvent::Started, this, &ThisClass::Input_Help); }
+	if (WhistleAction)     { Input->BindAction(WhistleAction, ETriggerEvent::Started, this, &ThisClass::Input_Whistle); }
 	if (ScoreboardAction)
 	{
 		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
@@ -817,6 +823,33 @@ void ANAPlayerCharacter::Input_Crouch()
 void ANAPlayerCharacter::Input_CrouchCompleted()
 {
 	bSwimDescend = false;
+}
+
+void ANAPlayerCharacter::Input_Whistle()
+{
+	if (!IsDead())
+	{
+		ServerWhistle();
+	}
+}
+
+void ANAPlayerCharacter::ServerWhistle_Implementation()
+{
+	const ANAPlayerState* State = GetPlayerState<ANAPlayerState>();
+	ANAHorse* Horse = State ? ANAHorse::FindOwnedHorse(GetWorld(), State->GetStableId()) : nullptr;
+	ANAPlayerController* PC = Cast<ANAPlayerController>(GetController());
+	if (!Horse)
+	{
+		if (PC) { PC->ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("You whistle, but you have no horse. Tame a wild one with Berries.")); }
+		return;
+	}
+	if (FVector::Dist(Horse->GetActorLocation(), GetActorLocation()) > 15000.f)
+	{
+		if (PC) { PC->ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("Your horse is too far away to hear you.")); }
+		return;
+	}
+	Horse->CallTo(this);
+	if (PC) { PC->ClientReceiveChat(ENAChatChannel::System, FString(), TEXT("You whistle. Your horse is coming.")); }
 }
 
 void ANAPlayerCharacter::Input_Help()

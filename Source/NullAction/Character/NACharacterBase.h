@@ -74,6 +74,10 @@ public:
 	/** Server only: ignore all damage for a moment (dodge roll). */
 	void GrantInvulnerability(float Seconds);
 
+	/** Every machine: sitting on a mount (cosmetic pose for the stand-in body). */
+	void SetMountedPose(bool bMounted) { bMountedPose = bMounted; }
+	bool IsMounted() const { return bMountedPose; }
+
 	/** Server only (owner/admin command): permanent invincibility until turned off. */
 	void SetGodMode(bool bNewGodMode);
 	bool IsGodMode() const { return bGodMode; }
@@ -284,6 +288,7 @@ private:
 	void ApplyFallbackColors();
 	void SetFallbackVisible(bool bVisible);
 	float FallbackWalkPhase = 0.f;
+	bool bMountedPose = false;
 	void UpdateRotationMode();
 	void AttachWeapon(ANAWeapon* Weapon);
 

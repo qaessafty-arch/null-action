@@ -168,6 +168,22 @@ void ANACharacterBase::AnimateFallbackBody(float DeltaSeconds)
 	{
 		return;
 	}
+	if (bMountedPose)
+	{
+		// Riding: astride the saddle, legs down the horse's sides, hands forward on the reins.
+		FallbackPelvis->SetRelativeLocation(FVector(0.f, 0.f, NABody::PelvisHeight));
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			const float Out = Side == 0 ? -1.f : 1.f;
+			FallbackHips[Side]->SetRelativeRotation(FRotator(30.f, 0.f, 38.f * Out));
+			FallbackKnees[Side]->SetRelativeRotation(FRotator(-55.f, 0.f, -20.f * Out));
+			FallbackShoulders[Side]->SetRelativeRotation(FRotator(45.f, 0.f, 4.f * Out));
+			FallbackElbows[Side]->SetRelativeRotation(FRotator(45.f, 0.f, 0.f));
+		}
+		FallbackSpine->SetRelativeRotation(FRotator(-6.f, 0.f, 0.f));
+		FallbackNeck->SetRelativeRotation(FRotator::ZeroRotator);
+		return;
+	}
 	const bool bDeadNow = IsDead();
 	const bool bLying = bDeadNow || bIsProne || IsDowned();
 	const bool bCrouching = bIsCrouched && !bLying;

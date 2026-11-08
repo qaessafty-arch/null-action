@@ -54,6 +54,9 @@ public:
 	/** Called by the boss when it dies; it returns after BossRespawnSeconds. */
 	void OnBossKilled(class ANABoss* Boss, AController* Killer);
 
+	/** Called by a horse when it dies; a new wild horse joins the herd later. */
+	void OnHorseKilled(class ANAHorse* Horse);
+
 	/** Server: a system message to every player. */
 	void AnnounceToAll(const FString& Text) const { BroadcastSystemMessage(Text); }
 
@@ -109,6 +112,8 @@ private:
 	void SpawnCreature();
 	void SpawnShrines(const FTransform& ArenaTransform);
 	void SpawnBoss();
+	void SpawnWildHorse();
+	FVector HorseHerdCenter = FVector::ZeroVector;
 	FVector BossLairLocation = FVector::ZeroVector;
 	/** Server: a player died. Rebirth at their shrine (keeping items) or drop everything where they fell. Returns true for a rebirth. */
 	bool HandlePlayerDeathItems(ANACharacterBase* Victim, APlayerController* PlayerController);

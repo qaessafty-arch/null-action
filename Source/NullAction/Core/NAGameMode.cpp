@@ -26,6 +26,7 @@
 #include "Interaction/NAResourceNode.h"
 #include "Interaction/NAAshShrine.h"
 #include "Creatures/NABoss.h"
+#include "Creatures/NAHorse.h"
 #include "Core/NAPlayerState.h"
 #include "Combat/NAHealthComponent.h"
 #include "GameFramework/GameStateBase.h"
@@ -325,6 +326,16 @@ void ANAGameMode::SpawnArenaContent()
 		BossLairLocation = FVector(Crater.X, Crater.Y, NATerrain::HeightAt(Crater.X, Crater.Y) + 220.f);
 		SpawnBoss();
 	}
+
+	// A wild horse herd grazing on the open grassland west of the arena.
+	{
+		const FVector2D Herd(2500.f, -9500.f);
+		HorseHerdCenter = FVector(Herd.X, Herd.Y, NATerrain::HeightAt(Herd.X, Herd.Y) + 120.f);
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			SpawnWildHorse();
+		}
+	}
 }
 
 void ANAGameMode::SpawnBoss()
@@ -336,6 +347,27 @@ void ANAGameMode::SpawnBoss()
 		Boss->SetLairLocation(BossLairLocation);
 		Boss->FinishSpawning(Where);
 	}
+}
+
+void ANAGameMode::SpawnWildHorse()
+{
+	const FVector2D Offset = FMath::RandPointInCircle(900.f);
+	const FVector Where(HorseHerdCenter.X + Offset.X, HorseHerdCenter.Y + Offset.Y,
+		NATerrain::HeightAt(HorseHerdCenter.X + Offset.X, HorseHerdCenter.Y + Offset.Y) + 120.f);
+	const FTransform Spawn(FRotator(0.f, FMath::FRandRange(0.f, 360.f), 0.f), Where);
+	if (ANAHorse* Horse = GetWorld()->SpawnActorDeferred<ANAHorse>(ANAHorse::StaticClass(), Spawn, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Horse->SetHerdCenter(HorseHerdCenter);
+		Horse->SetCoat(static_cast<uint8>(FMath::RandRange(0, 3)));
+		Horse->FinishSpawning(Spawn);
+	}
+}
+
+void ANAGameMode::OnHorseKilled(ANAHorse* Horse)
+{
+	FTimerHandle Handle;
+	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnWildHorse, 300.f, false);
 }
 
 void ANAGameMode::OnBossKilled(ANABoss* Boss, AController* Killer)

@@ -19,6 +19,7 @@
 #include "World/NATerrainManager.h"
 #include "Inventory/NAInventoryComponent.h"
 #include "Inventory/NAItems.h"
+#include "Creatures/NAHorse.h"
 
 namespace
 {
@@ -318,6 +319,19 @@ void ANAHUD::DrawHUD()
 	APlayerController* PC = GetOwningPlayerController();
 	ANAPlayerCharacter* Player = PC ? Cast<ANAPlayerCharacter>(PC->GetPawn()) : nullptr;
 
+	// ----- Riding: the controller possesses the horse -----
+	if (!Player)
+	{
+		if (ANAHorse* Horse = PC ? Cast<ANAHorse>(PC->GetPawn()) : nullptr)
+		{
+			DrawCompass(CenterX, PC->GetControlRotation().Yaw);
+			const FString Region = NATerrain::RegionAt(Horse->GetActorLocation());
+			DrawText(Region.ToUpper(), Accent, CenterX - Region.Len() * 4.5f, 44.f, nullptr, 0.95f);
+			DrawMounted(Horse, ScreenW, ScreenH);
+			return;
+		}
+	}
+
 	// ----- Dead: show the respawn message over your body -----
 	if (!Player)
 	{
@@ -374,23 +388,24 @@ void ANAHUD::DrawHUD()
 	// ----- Help text (top-left): hidden until F1 -----
 	if (!bShowDebugOverlay)
 	{
-		DrawText(TEXT("F1  controls     NULL-ACTION dev build 1.3"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
+		DrawText(TEXT("F1  controls     NULL-ACTION dev build 1.4"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
 	}
 	else
 	{
-		DrawPanel(14.f, 14.f, FMath::Min(ScreenW * 0.62f, 900.f), 196.f);
+		DrawPanel(14.f, 14.f, FMath::Min(ScreenW * 0.62f, 900.f), 214.f);
 		float Y = 24.f;
 		auto Line = [this, &Y](const FString& Text, const FLinearColor& Color)
 		{
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 1.3"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 1.4"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
 		Line(TEXT("I inventory & crafting   E gather (trees, rocks, herbs, berries, scrap)"), TextColor);
 		Line(TEXT("Hunting: craft Bow (key 5, silent), Arrow Bundles, Knife (skin carcasses), Snare Traps, Bait. Look at paw prints to read tracks"), TextColor);
+		Line(TEXT("Horses: walk up slowly, E with Berries/Herbs to feed (3x tames). E ride, Shift gallop, Space jump, E dismount, H whistle"), TextColor);
 		Line(TEXT("Q class power   Console: NAClass Phantom|Hunter|Storm|Guardian   Downed teammate: tap E to revive, Crouch+E to carry"), TextColor);
 		Line(TEXT("Tab scoreboard   ~ console: NAChat \"hi\"  NAPlayers  (owner: NAGod NAFly NASpawn NAGive NAWeather NATime ...)"), TextColor);
 		if (const ANAPlayerState* MyState = PC ? PC->GetPlayerState<ANAPlayerState>() : nullptr)

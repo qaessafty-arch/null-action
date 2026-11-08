@@ -13,6 +13,7 @@ class UInputAction;
 class UNASurvivalComponent;
 class UNAInventoryComponent;
 class UNAAbilityComponent;
+class ANAHorse;
 class UStaticMeshComponent;
 
 struct FInputActionValue;
@@ -70,6 +71,10 @@ public:
 	bool IsBeingCarried() const { return CarriedBy != nullptr; }
 	bool IsRecovering() const;
 	bool IsCloaked() const;
+
+	// ----- Horse (Creatures/NAHorse) -----
+	void SetMountedHorse(ANAHorse* Horse);
+	ANAHorse* GetMountedHorse() const;
 
 	// ----- Inventory menu (local UI state, read by the HUD) -----
 	bool IsInventoryOpen() const { return bInventoryOpen; }
@@ -166,6 +171,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuConfirmAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> AbilityAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> HelpAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> WhistleAction;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
 	bool bAdminFlying = false;
@@ -240,6 +246,9 @@ private:
 	void Input_MenuConfirm();
 	void Input_Ability();
 	void Input_Help();
+	void Input_Whistle();
+	UFUNCTION(Server, Reliable) void ServerWhistle();
+	TWeakObjectPtr<ANAHorse> MountedHorse; // Server.
 
 	// NAPlayerCharacter_Rescue.cpp
 	void UpdateRescue(float DeltaSeconds);
