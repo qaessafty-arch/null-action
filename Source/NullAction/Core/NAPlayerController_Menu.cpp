@@ -86,9 +86,9 @@ void ANAPlayerController::OpenMenu(ENAMenuScreen Screen)
 	const bool bWasOpen = IsMenuOpen();
 	const bool bFromGameplayView = !bWasOpen || GetViewTarget() != MenuCamera;
 	MenuScreen = Screen;
-	if (ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(GetPawn()))
+	if (ANAPlayerCharacter* PlayerBody = Cast<ANAPlayerCharacter>(GetPawn()))
 	{
-		Player->CloseInventoryMenu();
+		PlayerBody->CloseInventoryMenu();
 	}
 
 	// Pause (and settings/controls opened from pause) stay over the gameplay view.
@@ -256,7 +256,7 @@ void ANAPlayerController::ApplyGraphicsDelta(int32 QualityDelta)
 void ANAPlayerController::HandleMenuAction(FName Action)
 {
 	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
-	ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(GetPawn());
+	ANAPlayerCharacter* PlayerBody = Cast<ANAPlayerCharacter>(GetPawn());
 	const FString Id = Action.ToString();
 
 	// ----- Navigation -----
@@ -274,7 +274,7 @@ void ANAPlayerController::HandleMenuAction(FName Action)
 	if (Id == TEXT("Inventory") || Id == TEXT("Progression"))
 	{
 		CloseMenu();
-		if (Player) { Player->OpenInventoryTab(Id == TEXT("Inventory") ? 0 : 2); }
+		if (PlayerBody) { PlayerBody->OpenInventoryTab(Id == TEXT("Inventory") ? 0 : 2); }
 		return;
 	}
 	if (Id == TEXT("Exit"))                           { ConsoleCommand(TEXT("quit")); return; }
@@ -323,7 +323,7 @@ void ANAPlayerController::HandleMenuAction(FName Action)
 	else { bLookChanged = false; }
 	if (bLookChanged)
 	{
-		if (Player) { Player->ApplyAppearance(EditedAppearance); }
+		if (PlayerBody) { PlayerBody->ApplyAppearance(EditedAppearance); }
 		return;
 	}
 	if (Id == TEXT("SaveLook"))
