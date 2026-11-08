@@ -1,6 +1,35 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v1.0: Milestone 5B (downed & revive, carrying, ASH REBIRTH shrines, class powers) written, not yet built. v0.9 (5A) also not yet confirmed. v0.8 (Stages 1-2, 3A, 4A, 4B) runs on owner's PC. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v1.1: Milestone 5C (hunting gear: bow, arrows, knife/skinning, snare traps, bait, creature tracks) written, not yet built. v1.0.1 (5B) sent; build result not yet reported. v0.8 confirmed running. 3B waits on the owner's Epic/Google developer accounts._
+
+## Milestone 5C: hunting equipment and tracking (Stage 5, part 3)
+
+Status: **written, not yet compiled or tested (v1.1).**
+
+New craftable gear (I → Crafting tab):
+| Item | Recipe | What it does |
+|---|---|---|
+| Hunting Bow | 6 Wood + 2 Herb | Use it to add the bow to **slot 5 (key 5)**. 50 damage, one arrow at a time, **almost silent** (AI hears it at ~6% of a gunshot's range), **+60% damage to creatures**. Starts with 12 arrows. |
+| Arrow Bundle | 2 Wood + 1 Stone | Use: +6 arrows (max 40). Ammo Packs, supply pickups and crates don't refill the bow. |
+| Hunting Knife | 2 Scrap + 1 Wood | Keep it in your inventory and press E on a dead Ash Stalker to **skin** it: +1 Ash Hide, +2 Raw Meat, 25% chance of an Ember Fang. One skinning per carcass. |
+| Snare Trap | 3 Scrap + 2 Wood | Use: sets a dark jaw trap on the ground in front of you (needs fairly flat ground, max 5 armed per player). The first creature or enemy that steps in takes 30 damage; **creatures and soldiers are held for 5 s**. Other players take only the damage (their movement is predicted on their own machine, so the server doesn't freeze it). It never triggers on the player who set it. |
+| Meat Bait | 1 Raw Meat + 2 Berries | Use: drops bait (lasts 2 min). A roaming creature within 35 m smells it, walks over and **eats for 10 s**, distracted: it ignores you unless you come within 7 m. |
+
+Tracking: Ash Stalkers leave **paw prints** every ~4.5 m (they fade after 90 s). Look at one for "Ash Stalker tracks - fresh (23 s), heading north-east" (+X is north). A Hunter's Tracking Pulse also highlights tracks within 30 m.
+
+Also: creature loot now drops beside the body instead of under it. HUD `dev build 1.1`.
+
+Honest limits: the bow uses the same instant-hit trace as the guns (no arrow drop or flight time yet); trap and bait models are simple shapes; there's no separate "Hunt Mode" screen yet, so tracking goes through the paw prints and the Hunter power.
+
+### 5C test checklist
+- [ ] Builds; HUD says `dev build 1.1`
+- [ ] Owner: `NAGive Wood 30`, `NAGive Herb 10`, `NAGive ScrapMetal 20`, `NAGive Stone 10`, `NAGive RawMeat 3`, `NAGive Berries 6`, then craft each new item
+- [ ] Use the Hunting Bow → key 5 equips it; shots are quiet (a soldier nearby doesn't turn round as it would for a pistol); it hits the Ash Stalker hard
+- [ ] Arrow Bundle adds 6 arrows; an Ammo Pack doesn't add any
+- [ ] Follow paw prints from the den; the prompt shows age and heading
+- [ ] Drop bait near the den → the Stalker walks over and eats; it ignores you at range
+- [ ] Set a snare in its path → it snaps shut, the Stalker is held for 5 s and takes 30 damage
+- [ ] Kill it, E on the carcass with the knife → extra hide/meat; E again does nothing
 
 ## Milestone 5B: downed & revive, carrying, ASH REBIRTH and class powers (Stage 5, part 2)
 

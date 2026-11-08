@@ -165,7 +165,7 @@ bool ANASupplyPickup::GiveTo(ANACharacterBase* User)
 		int32 Added = 0;
 		for (ANAWeapon* Weapon : User->GetWeapons())
 		{
-			if (Weapon)
+			if (Weapon && !Weapon->GetStats().bUsesArrows)
 			{
 				Added += Weapon->AddReserveAmmo(FMath::RoundToInt(Amount) * Weapon->GetStats().MagazineSize);
 			}

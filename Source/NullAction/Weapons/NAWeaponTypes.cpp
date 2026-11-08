@@ -86,3 +86,28 @@ ANAWeapon_SniperRifle::ANAWeapon_SniperRifle()
 	Stats.AimArmLength = 120.f;
 	Stats.ModelSize = FVector(96.f, 6.f, 12.f);
 }
+
+ANAWeapon_HuntingBow::ANAWeapon_HuntingBow()
+{
+	Stats.DisplayName = NSLOCTEXT("NullAction", "HuntingBow", "Hunting Bow");
+	Stats.Slot = 5;
+	Stats.FireMode = ENAFireMode::SemiAuto;
+	Stats.RoundsPerMinute = 60.f;
+	Stats.Damage = 50.f;
+	Stats.HeadshotMultiplier = 2.5f;
+	Stats.LimbMultiplier = 0.7f;
+	Stats.RangeCm = 7000.f;
+	Stats.HipSpreadDegrees = 2.5f;
+	Stats.AimSpreadDegrees = 0.25f;
+	Stats.RecoilPitchDegrees = 0.4f;
+	Stats.RecoilYawDegrees = 0.2f;
+	Stats.MagazineSize = 1;
+	Stats.StartingReserveAmmo = 12;
+	Stats.MaxReserveAmmo = 40;
+	Stats.ReloadSeconds = 0.8f;
+	Stats.AimFieldOfView = 55.f;
+	Stats.ModelSize = FVector(10.f, 4.f, 110.f); // Tall and thin, like a bow.
+	Stats.NoiseLoudness = 0.06f;
+	Stats.CreatureDamageMultiplier = 1.6f;
+	Stats.bUsesArrows = true;
+}

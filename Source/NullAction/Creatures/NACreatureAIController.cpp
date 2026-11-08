@@ -1,4 +1,5 @@
 #include "Creatures/NACreatureAIController.h"
+#include "Hunting/NABait.h"
 
 #include "AITypes.h"
 #include "Character/NACharacterBase.h"
@@ -257,8 +258,19 @@ void ANACreatureAIController::TickRoam(float Now)
 	if (bPreyVisible && Prey.IsValid())
 	{
 		// Close and unaware prey gets ambushed straight away; otherwise stalk it first.
+		// A feeding creature is distracted: it only reacts to prey that comes really close.
 		const float Distance = FVector::Dist(Prey->GetActorLocation(), Creature->GetActorLocation());
-		EnterState(Distance < 900.f && !IsPreyLookingAtMe(0.3f) ? ENACreatureState::Hunt : ENACreatureState::Stalk);
+		if (EatUntil <= Now || Distance < 700.f)
+		{
+			EatUntil = 0.f;
+			TargetBait = nullptr;
+			EnterState(Distance < 900.f && !IsPreyLookingAtMe(0.3f) ? ENACreatureState::Hunt : ENACreatureState::Stalk);
+			return;
+		}
+	}
+
+	if (TickBait(Now))
+	{
 		return;
 	}
 
@@ -276,6 +288,55 @@ void ANACreatureAIController::TickRoam(float Now)
 		const FVector2D Offset = FMath::RandPointInCircle(RoamRadius);
 		MoveToPoint(Creature->GetDenLocation() + FVector(Offset.X, Offset.Y, 0.f), 100.f);
 	}
+}
+
+bool ANACreatureAIController::TickBait(float Now)
+{
+	ANACreature* Creature = GetCreature();
+	if (!Creature)
+	{
+		return false;
+	}
+	// Eating.
+	if (EatUntil > 0.f)
+	{
+		AActor* Bait = TargetBait.Get();
+		if (Bait && Now < EatUntil)
+		{
+			return true;
+		}
+		if (Bait && FVector::Dist2D(Bait->GetActorLocation(), Creature->GetActorLocation()) < 300.f)
+		{
+			Bait->Destroy(); // Finished the meal.
+		}
+		EatUntil = 0.f;
+		TargetBait = nullptr;
+		Creature->SetMoveSpeed(NACreatureSpeeds::Roam);
+		return false;
+	}
+	// Sniff for bait every couple of seconds.
+	if (!TargetBait.IsValid() && Now >= NextBaitScan)
+	{
+		NextBaitScan = Now + 2.f;
+		TargetBait = ANABait::FindNearest(GetWorld(), Creature->GetActorLocation(), ANABait::SmellRadius);
+	}
+	AActor* Bait = TargetBait.Get();
+	if (!Bait)
+	{
+		return false;
+	}
+	if (FVector::Dist2D(Bait->GetActorLocation(), Creature->GetActorLocation()) < 220.f)
+	{
+		StopMovement();
+		EatUntil = Now + 10.f;
+		return true;
+	}
+	if (IsMoveIdle())
+	{
+		Creature->SetMoveSpeed(NACreatureSpeeds::Investigate);
+		MoveToPoint(Bait->GetActorLocation(), 120.f);
+	}
+	return true;
 }
 
 void ANACreatureAIController::TickStalk(float Now, float DeltaSeconds)

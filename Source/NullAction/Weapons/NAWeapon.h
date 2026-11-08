@@ -47,6 +47,13 @@ struct FNAWeaponStats
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aim") float AimFieldOfView = 60.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aim") float AimArmLength = 170.f;
 
+	/** How far AI can hear the shot, relative to a gunshot (1). The bow is nearly silent. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hunting") float NoiseLoudness = 1.f;
+	/** Damage multiplier against creatures (hunting weapons hit harder). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hunting") float CreatureDamageMultiplier = 1.f;
+	/** Reloaded with crafted Arrow Bundles, not Ammo Packs or supply crates. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Hunting") bool bUsesArrows = false;
+
 	/** Stand-in model size (length, width, height) in cm, until real weapon meshes are imported. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual") FVector ModelSize = FVector(30.f, 5.f, 11.f);
 };

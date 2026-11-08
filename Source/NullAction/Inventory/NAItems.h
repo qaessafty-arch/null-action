@@ -60,4 +60,5 @@ namespace NAItems
 	inline FName Wall()       { return TEXT("WoodWall"); }
 	inline FName Doorway()    { return TEXT("WoodDoorway"); }
 	inline FName Campfire()   { return TEXT("Campfire"); }
+	inline FName HuntingKnife() { return TEXT("HuntingKnife"); }
 }

@@ -1,4 +1,7 @@
 #include "Inventory/NAInventoryComponent.h"
+#include "Hunting/NAHuntTrap.h"
+#include "Hunting/NABait.h"
+#include "Weapons/NAWeaponTypes.h"
 
 #include "Building/NABuildPiece.h"
 #include "Character/NACharacterBase.h"
@@ -163,7 +166,7 @@ void UNAInventoryComponent::Use(FName ItemId)
 {
 	ANACharacterBase* Character = Cast<ANACharacterBase>(GetOwner());
 	const FNAItemDef* Def = NAItems::Find(ItemId);
-	if (!Character || Character->IsDead() || !Def || Def->Category != ENAItemCategory::Consumable || CountOf(ItemId) <= 0)
+	if (!Character || Character->IsDead() || Character->IsDowned() || !Def || Def->Category != ENAItemCategory::Consumable || CountOf(ItemId) <= 0)
 	{
 		return; // Placeables are used through build mode (server checks placement there).
 	}
@@ -181,8 +184,29 @@ void UNAInventoryComponent::Use(FName ItemId)
 	{
 		for (ANAWeapon* Weapon : Character->GetWeapons())
 		{
-			if (Weapon && Weapon->AddReserveAmmo(Weapon->GetStats().MagazineSize * 2) > 0) { bUsed = true; }
+			if (Weapon && !Weapon->GetStats().bUsesArrows && Weapon->AddReserveAmmo(Weapon->GetStats().MagazineSize * 2) > 0) { bUsed = true; }
 		}
+	}
+	else if (ItemId == TEXT("HuntingBow"))
+	{
+		bUsed = Character->GiveWeapon(ANAWeapon_HuntingBow::StaticClass(), true) != nullptr;
+	}
+	else if (ItemId == TEXT("ArrowBundle"))
+	{
+		for (ANAWeapon* Weapon : Character->GetWeapons())
+		{
+			if (Weapon && Weapon->GetStats().bUsesArrows && Weapon->AddReserveAmmo(6) > 0) { bUsed = true; }
+		}
+	}
+	else if (ItemId == TEXT("SnareTrap"))
+	{
+		bUsed = ANAHuntTrap::Place(Character) != nullptr;
+		if (!bUsed) { Tell(TEXT("Can't set a trap here (needs open ground, max 5 traps each).")); return; }
+	}
+	else if (ItemId == TEXT("Bait"))
+	{
+		bUsed = ANABait::Place(Character) != nullptr;
+		if (!bUsed) { Tell(TEXT("Can't drop bait here.")); return; }
 	}
 	else if (ItemId == TEXT("EmberTonic"))
 	{

@@ -1,4 +1,5 @@
 #include "Weapons/NAWeapon.h"
+#include "Creatures/NACreature.h"
 
 #include "NullAction.h"
 #include "Character/NACharacterBase.h"
@@ -270,7 +271,8 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 		const float Multiplier = Zone == ENAHitZone::Head ? Stats.HeadshotMultiplier
 			: Zone == ENAHitZone::Limb ? Stats.LimbMultiplier : 1.f;
 
-		const float Dealt = UGameplayStatics::ApplyPointDamage(Hit.GetActor(), Stats.Damage * Multiplier, ToTarget, Hit,
+		const float HuntBonus = Hit.GetActor() && Hit.GetActor()->IsA<ANACreature>() ? Stats.CreatureDamageMultiplier : 1.f;
+		const float Dealt = UGameplayStatics::ApplyPointDamage(Hit.GetActor(), Stats.Damage * Multiplier * HuntBonus, ToTarget, Hit,
 			Character->GetController(), this, UDamageType::StaticClass());
 
 		if (Dealt > 0.f)
@@ -287,7 +289,7 @@ void ANAWeapon::ExecuteShotOnServer(const FVector& ViewLocation, const FVector& 
 	MulticastShotEffects(GetMuzzleLocation(), Ends);
 
 	// Enemies within hearing range notice gunfire.
-	UAISense_Hearing::ReportNoiseEvent(World, Eye, 1.f, Character, 0.f, FName(TEXT("Gunshot")));
+	UAISense_Hearing::ReportNoiseEvent(World, Eye, Stats.NoiseLoudness, Character, 0.f, FName(TEXT("Gunshot")));
 
 	if (TotalDamage > 0.f)
 	{

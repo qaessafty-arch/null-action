@@ -225,6 +225,7 @@ private:
 	void Input_WeaponSlot2();
 	void Input_WeaponSlot3();
 	void Input_WeaponSlot4();
+	void Input_WeaponSlot5();
 	void Input_CrouchCompleted();
 	void Input_Prone();
 	void Input_Dodge();

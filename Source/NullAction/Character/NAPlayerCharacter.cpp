@@ -521,6 +521,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot2"), EInputActionValueType::Boolean));
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot3"), EInputActionValueType::Boolean));
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot4"), EInputActionValueType::Boolean));
+	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot5"), EInputActionValueType::Boolean));
 	ProneAction = MakeAction(TEXT("IA_Prone"), EInputActionValueType::Boolean);
 	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
@@ -601,6 +602,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(WeaponSlotActions[1], EKeys::Two);
 	IMC->MapKey(WeaponSlotActions[2], EKeys::Three);
 	IMC->MapKey(WeaponSlotActions[3], EKeys::Four);
+	if (WeaponSlotActions.Num() >= 5) { IMC->MapKey(WeaponSlotActions[4], EKeys::Five); }
 
 	IMC->MapKey(ProneAction, EKeys::Z);
 	IMC->MapKey(ProneAction, EKeys::Gamepad_DPad_Up);
@@ -670,6 +672,10 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		Input->BindAction(WeaponSlotActions[1], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot2);
 		Input->BindAction(WeaponSlotActions[2], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot3);
 		Input->BindAction(WeaponSlotActions[3], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot4);
+	}
+	if (WeaponSlotActions.Num() >= 5)
+	{
+		Input->BindAction(WeaponSlotActions[4], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot5);
 	}
 }
 
@@ -973,3 +979,4 @@ void ANAPlayerCharacter::Input_WeaponSlot1()    { EquipWeaponInSlot(1); }
 void ANAPlayerCharacter::Input_WeaponSlot2()    { EquipWeaponInSlot(2); }
 void ANAPlayerCharacter::Input_WeaponSlot3()    { EquipWeaponInSlot(3); }
 void ANAPlayerCharacter::Input_WeaponSlot4()    { EquipWeaponInSlot(4); }
+void ANAPlayerCharacter::Input_WeaponSlot5()    { EquipWeaponInSlot(5); }

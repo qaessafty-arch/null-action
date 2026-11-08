@@ -6,6 +6,7 @@
 #include "Combat/NAHealthComponent.h"
 #include "Core/NAPlayerState.h"
 #include "Creatures/NACreature.h"
+#include "Hunting/NACreatureTrack.h"
 #include "AI/NAEnemySoldier.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
@@ -180,6 +181,16 @@ void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH
 		for (TActorIterator<ANACreature> It(World); It; ++It)
 		{
 			if (!It->IsDead()) { Mark(*It, AshColor, TEXT("CREATURE")); }
+		}
+		// Fresh tracks within 30 m light up, so the Hunter can follow the trail.
+		for (TActorIterator<ANACreatureTrack> It(World); It; ++It)
+		{
+			FVector2D Screen;
+			if (FVector::Dist(It->GetActorLocation(), Player->GetActorLocation()) <= 3000.f && ProjectToScreen(It->GetActorLocation(), Screen))
+			{
+				const float Fresh = 1.f - FMath::Clamp(It->GetAgeSeconds() / ANACreatureTrack::LifeSeconds, 0.f, 1.f);
+				DrawRect(FLinearColor(1.f, 0.75f, 0.3f, 0.3f + 0.6f * Fresh), Screen.X - 3.f, Screen.Y - 3.f, 6.f, 6.f);
+			}
 		}
 		for (TActorIterator<ANAPlayerCharacter> It(World); It; ++It)
 		{

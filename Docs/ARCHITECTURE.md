@@ -26,6 +26,7 @@ Source/
     Interaction/ INAInteractable interface, weapon/supply/item pickups, resource nodes, doors, loot crates, readable notes, Ash Shrines (rebirth points)
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
     Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
+    Hunting/    Snare traps, meat bait, creature paw-print tracks
     Inventory/  Item/recipe registry (NAItems), replicated inventory component with crafting
     Building/   Player-built pieces (foundation, wall, doorway+door, campfire) with ownership and health
 Docs/                   Architecture and decisions

@@ -21,6 +21,9 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Interaction/NAResourceNode.h"
 #include "Inventory/NAItems.h"
+#include "Inventory/NAInventoryComponent.h"
+#include "Character/NAPlayerCharacter.h"
+#include "Hunting/NACreatureTrack.h"
 
 namespace NACreatureBody
 {
@@ -170,6 +173,7 @@ UStaticMeshComponent* ANACreature::MakePart(FName PartName, USceneComponent* Par
 void ANACreature::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ANACreature, bSkinned);
 	DOREPLIFETIME(ANACreature, Mood);
 	DOREPLIFETIME(ANACreature, Prey);
 	DOREPLIFETIME(ANACreature, BiteCount);
@@ -292,11 +296,13 @@ void ANACreature::OnRep_BiteCount()
 void ANACreature::HandleKilled(AActor* Victim, AController* Killer)
 {
 	// Hunting rewards: hide, meat and a rare fang.
-	ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::AshHide(), 2);
-	ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::RawMeat(), 3);
+	// Dropped beside the body (not under it) so the carcass stays skinnable and the loot reachable.
+	const FVector Side = GetActorRightVector() * 160.f;
+	ANAItemPickup::Drop(GetWorld(), GetActorLocation() + Side, NAItems::AshHide(), 2);
+	ANAItemPickup::Drop(GetWorld(), GetActorLocation() - Side, NAItems::RawMeat(), 3);
 	if (FMath::FRand() < 0.6f)
 	{
-		ANAItemPickup::Drop(GetWorld(), GetActorLocation(), NAItems::EmberFang(), 1);
+		ANAItemPickup::Drop(GetWorld(), GetActorLocation() + Side + GetActorForwardVector() * 80.f, NAItems::EmberFang(), 1);
 	}
 
 	if (ANAGameMode* GameMode = GetWorld()->GetAuthGameMode<ANAGameMode>())
@@ -334,9 +340,66 @@ void ANACreature::HandleDeathStateChanged(bool bNowDead)
 	}
 }
 
+FText ANACreature::GetInteractionPrompt(const ANACharacterBase* User) const
+{
+	const ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(User);
+	const UNAInventoryComponent* Inventory = Player ? Player->GetInventoryComponent() : nullptr;
+	if (Inventory && Inventory->CountOf(NAItems::HuntingKnife()) > 0)
+	{
+		return FText::FromString(TEXT("Skin the Ash Stalker (extra hide and meat)"));
+	}
+	return FText::FromString(TEXT("Skinning needs a Hunting Knife (craft: 2 Scrap + 1 Wood)"));
+}
+
+bool ANACreature::CanInteract(const ANACharacterBase* User) const
+{
+	return IsDead() && !bSkinned && Cast<ANAPlayerCharacter>(User) != nullptr;
+}
+
+void ANACreature::Interact(ANACharacterBase* User)
+{
+	ANAPlayerCharacter* Player = Cast<ANAPlayerCharacter>(User);
+	UNAInventoryComponent* Inventory = Player ? Player->GetInventoryComponent() : nullptr;
+	if (!HasAuthority() || !CanInteract(User) || !Inventory || Inventory->CountOf(NAItems::HuntingKnife()) <= 0)
+	{
+		return;
+	}
+	bSkinned = true;
+	auto Give = [this, Inventory](FName Item, int32 Count)
+	{
+		const int32 Added = Inventory->AddItem(Item, Count);
+		if (Added < Count)
+		{
+			ANAItemPickup::Drop(GetWorld(), GetActorLocation() + FVector(0.f, 0.f, 40.f), Item, Count - Added); // Inventory full.
+		}
+	};
+	Give(NAItems::AshHide(), 1);
+	Give(NAItems::RawMeat(), 2);
+	if (FMath::FRand() < 0.25f)
+	{
+		Give(NAItems::EmberFang(), 1);
+	}
+}
+
 void ANACreature::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	// Leave paw prints as it moves (server), so players can follow it.
+	if (HasAuthority() && !IsDead() && GetCharacterMovement()->IsMovingOnGround())
+	{
+		const FVector Location = GetActorLocation();
+		if (!bLeftFirstTrack || FVector::Dist2D(Location, LastTrackLocation) >= 450.f)
+		{
+			bLeftFirstTrack = true;
+			LastTrackLocation = Location;
+			bTrackLeft = !bTrackLeft;
+			const FVector Ground = Location - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight())
+				+ GetActorRightVector() * (bTrackLeft ? -15.f : 15.f);
+			ANACreatureTrack::Spawn(GetWorld(), Ground, GetActorRotation().Yaw, TEXT("Ash Stalker"));
+		}
+	}
+
 	if (GetNetMode() != NM_DedicatedServer)
 	{
 		AnimateBody(DeltaSeconds); // Purely cosmetic: no need on a dedicated server.

@@ -75,7 +75,7 @@ void ANALootContainer::Interact(ANACharacterBase* User)
 	TArray<FString> Found;
 	for (ANAWeapon* Weapon : User->GetWeapons())
 	{
-		if (Weapon && Weapon->AddReserveAmmo(Weapon->GetStats().MagazineSize * 2) > 0)
+		if (Weapon && !Weapon->GetStats().bUsesArrows && Weapon->AddReserveAmmo(Weapon->GetStats().MagazineSize * 2) > 0)
 		{
 			Found.AddUnique(TEXT("ammo"));
 		}

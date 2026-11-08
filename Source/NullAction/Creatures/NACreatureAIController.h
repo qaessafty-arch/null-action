@@ -88,6 +88,12 @@ private:
 	float OrbitDirection = 1.f;
 	float NextDodgeTime = 0.f;
 	float RecoilUntil = 0.f;
+
+	// Bait (Hunting/NABait): roaming creatures walk to it and eat, distracted.
+	bool TickBait(float Now);
+	TWeakObjectPtr<AActor> TargetBait;
+	float EatUntil = 0.f;
+	float NextBaitScan = 0.f;
 	bool bHasFled = false;
 
 	FTimerHandle ThinkTimer;

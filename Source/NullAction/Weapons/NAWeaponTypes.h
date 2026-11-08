@@ -31,6 +31,15 @@ public:
 	ANAWeapon_Shotgun();
 };
 
+/** Slot 5. Hunting bow: silent (AI barely hears it), +60% damage to creatures, one arrow at a time. Crafted. */
+UCLASS()
+class NULLACTION_API ANAWeapon_HuntingBow : public ANAWeapon
+{
+	GENERATED_BODY()
+public:
+	ANAWeapon_HuntingBow();
+};
+
 /** Slot 4. Bolt-action; one headshot kills an unarmored target. Deep zoom when aiming. */
 UCLASS()
 class NULLACTION_API ANAWeapon_SniperRifle : public ANAWeapon

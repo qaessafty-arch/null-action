@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Interaction/NAInteractable.h"
 #include "NACreature.generated.h"
 
 class UNAHealthComponent;
@@ -28,7 +29,7 @@ enum class ENACreatureMood : uint8
  * Brain: ANACreatureAIController (server). Mood and bites replicate so every player sees the same hunt.
  */
 UCLASS()
-class NULLACTION_API ANACreature : public ACharacter
+class NULLACTION_API ANACreature : public ACharacter, public INAInteractable
 {
 	GENERATED_BODY()
 
@@ -51,6 +52,11 @@ public:
 	void SetMoveSpeed(float Speed);
 	bool TryBite(AActor* Victim);
 	void SetDenLocation(const FVector& Location) { DenLocation = Location; }
+
+	// ----- Hunting: skin the carcass with a Hunting Knife (E) -----
+	virtual FText GetInteractionPrompt(const ANACharacterBase* User) const override;
+	virtual bool CanInteract(const ANACharacterBase* User) const override;
+	virtual void Interact(ANACharacterBase* User) override;
 
 	/** Last player who hurt it (server), so the AI can answer an attack it didn't see coming. */
 	AActor* GetLastAttacker() const { return LastAttacker.Get(); }
@@ -85,6 +91,7 @@ protected:
 	UPROPERTY(Replicated) ENACreatureMood Mood = ENACreatureMood::Roaming;
 	UPROPERTY(Replicated) TObjectPtr<AActor> Prey;
 	UPROPERTY(ReplicatedUsing = OnRep_BiteCount) uint8 BiteCount = 0;
+	UPROPERTY(Replicated) bool bSkinned = false;
 
 	UFUNCTION() void OnRep_BiteCount();
 	UFUNCTION() void HandleDeathStateChanged(bool bNowDead);
@@ -102,4 +109,7 @@ private:
 	float LifeTime = 0.f;
 	float BiteAnimStartTime = -100.f;
 	float LastBiteTime = -100.f;
+	FVector LastTrackLocation = FVector::ZeroVector;
+	bool bLeftFirstTrack = false;
+	bool bTrackLeft = false;
 };
