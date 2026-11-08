@@ -18,7 +18,7 @@ Source/
     Core/       Game mode, HUD — server rules and session flow
     Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
     Animation/  UNAAnimInstance — native parent for every character AnimBP
-    World/      ANATestArena — code-built movement test course
+    World/      ANATestArena — code-built test course; ANAWaterVolume — swimmable water
     Combat/     Health/armor component, hit zones, training dummy
     Weapons/    ANAWeapon base, four weapon types, tracer effect
     Survival/   Stamina, hunger, thirst component

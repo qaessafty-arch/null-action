@@ -181,7 +181,11 @@ void ANAEnemyAIController::UpdatePerception(float DeltaSeconds, float Now)
 
 		// Noticing is faster up close, slower far away, and slower if the player is crouched.
 		float Rate = FMath::GetMappedRangeValueClamped(FVector2D(300.f, Profile.SightRadius), FVector2D(3.f, 0.5f), NearestDistance);
-		if (Nearest->bIsCrouched)
+		if (Nearest->IsProne())
+		{
+			Rate *= 0.3f; // Lying flat is very hard to spot.
+		}
+		else if (Nearest->bIsCrouched)
 		{
 			Rate *= 0.6f;
 		}

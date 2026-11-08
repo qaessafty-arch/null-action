@@ -33,6 +33,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetHungerFraction() const { return MaxHunger > 0.f ? Hunger / MaxHunger : 0.f; }
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetThirstFraction() const { return MaxThirst > 0.f ? Thirst / MaxThirst : 0.f; }
 	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") bool IsExhausted() const { return bExhausted; }
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetOxygenFraction() const { return MaxOxygen > 0.f ? Oxygen / MaxOxygen : 0.f; }
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetBodyTemperature() const { return BodyTemperature; }
+	bool IsHypothermic() const { return BodyTemperature < HypothermiaTemperature; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -50,7 +53,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float ThirstDrainPerSecond = 100.f / (30.f * 60.f);
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float StarvationDamagePerSecond = 1.f;
 
+	/** Breath held underwater: full to empty in 30 s, then drowning damage. */
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Oxygen") float MaxOxygen = 100.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Oxygen") float OxygenDrainPerSecond = 100.f / 30.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Oxygen") float OxygenRecoverPerSecond = 25.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Oxygen") float DrowningDamagePerSecond = 10.f;
+
+	/** Body temperature in °C. Cold water chills you; below the threshold stamina recovers slowly and, colder still, you take damage. */
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Temperature") float NormalTemperature = 37.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Temperature") float WaterCoolingPerSecond = 0.08f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Temperature") float WarmingPerSecond = 0.05f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Temperature") float HypothermiaTemperature = 35.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Temperature") float SevereHypothermiaTemperature = 33.f;
+
 	UPROPERTY(Replicated) float Stamina = 100.f;
+	UPROPERTY(Replicated) float Oxygen = 100.f;
+	UPROPERTY(Replicated) float BodyTemperature = 37.f;
 	UPROPERTY(Replicated) float Hunger = 100.f;
 	UPROPERTY(Replicated) float Thirst = 100.f;
 	UPROPERTY(Replicated) bool bExhausted = false;
@@ -58,4 +76,5 @@ protected:
 private:
 	float LastStaminaUseTime = -100.f;
 	float PendingStarvationDamage = 0.f;
+	float PendingEnvironmentDamage = 0.f;
 };

@@ -33,6 +33,13 @@ public:
 	virtual void GetAimViewPoint(FVector& OutLocation, FRotator& OutRotation) const override;
 	virtual void ApplyRecoil(float PitchDegrees, float YawDegrees) override;
 	virtual void OnJumped_Implementation() override;
+	virtual bool IsInWater() const override;
+	virtual bool IsHeadUnderwater() const override;
+
+	/** Local: is the camera under the water surface (for the HUD tint)? */
+	bool IsCameraUnderwater() const;
+	bool IsSwimming() const;
+	bool IsSliding() const { return bSliding; }
 
 	USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	UCameraComponent* GetFollowCamera() const { return FollowCamera; }
@@ -61,6 +68,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival") float JumpStaminaCost = 8.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float MantleStaminaCost = 10.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float MaxMantleHeight = 260.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float DodgeStaminaCost = 20.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float DodgeSpeed = 950.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float DodgeCooldownSeconds = 0.9f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float SlideBoost = 250.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float SlideSeconds = 0.9f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float SwimSpeed = 300.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Movement") float FastSwimSpeed = 450.f;
+
 	/** How far from the character the interact key reaches, in cm. */
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Interaction") float InteractionRange = 250.f;
 
@@ -78,9 +95,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> NextWeaponAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> PreviousWeaponAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TArray<TObjectPtr<UInputAction>> WeaponSlotActions;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> ProneAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> DodgeAction;
 
 	UFUNCTION(Server, Reliable)
 	void ServerInteract(AActor* Target);
+
+	UFUNCTION(Server, Reliable)
+	void ServerMantle();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSlide();
+
+	UFUNCTION(Server, Reliable)
+	void ServerDodge(FVector_NetQuantizeNormal Direction);
 
 private:
 	void BuildDefaultInputIfNeeded();
@@ -88,6 +116,14 @@ private:
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateInteractionFocus();
 	void UpdateFootstepNoise();
+	void UpdateSwimming();
+	bool FindMantle(FVector& OutLaunchVelocity) const;
+	void ExecuteMantle(const FVector& LaunchVelocity);
+	bool CanSlide() const;
+	void StartSlide();
+	void EndSlide();
+	bool CanDodge() const;
+	void ExecuteDodge(const FVector& Direction);
 
 	void Input_Move(const FInputActionValue& Value);
 	void Input_Look(const FInputActionValue& Value);
@@ -109,9 +145,19 @@ private:
 	void Input_WeaponSlot2();
 	void Input_WeaponSlot3();
 	void Input_WeaponSlot4();
+	void Input_CrouchCompleted();
+	void Input_Prone();
+	void Input_Dodge();
 
 	TWeakObjectPtr<AActor> FocusedInteractable;
 	float NextFootstepNoiseTime = 0.f;
+	bool bSwimAscend = false;
+	bool bSwimDescend = false;
+	bool bSliding = false;
+	float LastDodgeTime = -100.f;
+	float DefaultGroundFriction = 8.f;
+	float DefaultBrakingDeceleration = 1800.f;
+	FTimerHandle SlideTimer;
 	bool bSprintHeld = false;
 	bool bWalkToggled = false;
 };

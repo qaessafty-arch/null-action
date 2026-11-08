@@ -1,6 +1,38 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v0.4 (2A + 2B + 2C) compiles and runs on owner's PC (owner report: "working"). Next: 2D advanced movement._
+_Last updated: 2026-11-08 — v0.5: Milestone 2D (advanced movement) written; not yet built. v0.4 (2A + 2B + 2C) runs on owner's PC._
+
+## Milestone 2D: advanced movement and environment survival (Stage 2, part 4)
+
+Status: **written, not yet compiled or tested (v0.5).**
+
+| Feature | Controls | How it works |
+|---|---|---|
+| Prone | **Z** (toggle) | Lie flat: 70 cm/s, quietest, aim spread x0.45, enemies notice you 3x slower. Space or C gets you back to crouch. |
+| Slide | **C while sprinting** | Speed boost and low friction for 0.9 s, ending crouched. |
+| Dodge roll | **V** / right-stick click | Quick hop in your steering direction (backwards if still). 20 stamina, 0.9 s cooldown, **0.35 s where damage can't hurt you** (server-checked). |
+| Vault / climb | **Space** facing an obstacle | 45 cm–1.3 m: vault over; 1.3–2.6 m: climb on top. The server checks the obstacle itself. 10 stamina. Try the 120 cm jump box. |
+| Swimming / diving | In water: **WASD** swims where you look, **Space** up, **C** down, **Shift** fast | New **diving pool** in the back-right corner (stairs on the side facing the arena). Climb out with Space at the wall. |
+| Oxygen | automatic | 30 s of breath with your head underwater, then drowning damage. Oxygen bar appears when needed. |
+| Body temperature | automatic | Water chills you toward 30 °C. Under 35 °C stamina recovers at half speed; under 33 °C you take damage. Warms back up on land (faster when sprinting). |
+| Hard landings | automatic | Falls faster than 11 m/s hurt. |
+| Injuries | automatic | Under 35% health you limp (25% slower). |
+
+Honest limits: no character animations for these yet (they need an animated character, e.g. the Third Person pack's Manny, plus animation work). Prone keeps the crouched-height hitbox. Fatigue needs a sleep system (later). Weather-based temperature comes with the weather system (Stage 4).
+
+### 2D test checklist
+- [ ] HUD says `dev build 0.5`; new control help line visible
+- [ ] Z: lie down (stand-in body lies flat, HUD "prone"), very slow; Z or C back to crouch
+- [ ] Sprint + C: slide forward, ending crouched
+- [ ] V: dodge roll; stamina drops; can't spam it
+- [ ] Space at the 120 cm red box: you vault on; at the 2 m stair landing / ramp platform: you climb up
+- [ ] Pool: climb the stairs, jump in; swim, dive with C, rise with Space; screen turns blue underwater
+- [ ] Stay under: oxygen bar drains, then "DROWNING!" and health drops; surface to recover
+- [ ] Stay in the water: BODY temperature falls; below 35 shows "(cold!)"
+- [ ] Climb out with Space at the pool wall
+- [ ] Jump off something tall: hard landing damage
+- [ ] Health under 35: you move slower
+- [ ] Multiplayer: the other player sees you prone, sliding, rolling, swimming
 
 ## Milestone 2C: first creature, the ASH STALKER (Stage 2, part 3)
 

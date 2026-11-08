@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NATestArena.h"
+#include "World/NAWaterVolume.h"
 
 ANAGameMode::ANAGameMode()
 {
@@ -202,6 +203,9 @@ void ANAGameMode::SpawnArenaContent()
 	{
 		SpawnEnemy(Index);
 	}
+
+	// Water for the diving pool (back-right corner). Surface at 2.8 m, matching the pool walls.
+	World->SpawnActor<ANAWaterVolume>(ANAWaterVolume::StaticClass(), At(FVector(-2600.f, -2600.f, 140.f)), Params);
 
 	// Ash Stalker den in the far back-left corner (behind spawn, to the left).
 	CreatureDenLocation = ArenaTransform.TransformPosition(FVector(-2800.f, 2800.f, 80.f));

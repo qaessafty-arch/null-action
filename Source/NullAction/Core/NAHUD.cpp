@@ -85,6 +85,12 @@ void ANAHUD::DrawHUD()
 	const UNASurvivalComponent* Survival = Player->GetSurvivalComponent();
 	const ANAWeapon* Weapon = Player->GetCurrentWeapon();
 
+	// ----- Underwater tint -----
+	if (Player->IsCameraUnderwater())
+	{
+		DrawRect(FLinearColor(0.f, 0.12f, 0.22f, 0.45f), 0.f, 0.f, ScreenW, ScreenH);
+	}
+
 	// ----- Damage flash -----
 	if (Health)
 	{
@@ -104,11 +110,14 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.4"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.5"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
+		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
+		const TCHAR* Stance = Player->IsSwimming() ? TEXT(" (swimming)") : Player->IsSliding() ? TEXT(" (sliding)")
+			: Player->IsProne() ? TEXT(" (prone)") : Player->bIsCrouched ? TEXT(" (crouched)") : TEXT("");
 		Line(FString::Printf(TEXT("Gait: %s%s   Speed: %.0f cm/s   %s"),
-			GaitName(Player->GetGait()), Player->bIsCrouched ? TEXT(" (crouched)") : TEXT(""),
+			GaitName(Player->GetGait()), Stance,
 			Player->GetVelocity().Size2D(), NetModeName(GetNetMode())), TextColor);
 	}
 
@@ -232,6 +241,21 @@ void ANAHUD::DrawHUD()
 		BarY += 16.f;
 		DrawBar(BarX, BarY, BarW * 0.5f, BarH - 4.f, Survival->GetThirstFraction(), FLinearColor(0.15f, 0.65f, 0.85f),
 			FString::Printf(TEXT("WATER %.0f%%"), Survival->GetThirstFraction() * 100.f));
+		BarY += 16.f;
+
+		const float Temperature = Survival->GetBodyTemperature();
+		const FLinearColor TempColor = Survival->IsHypothermic() ? FLinearColor(0.4f, 0.7f, 1.f) : TextColor;
+		DrawText(FString::Printf(TEXT("BODY %.1f C%s"), Temperature, Survival->IsHypothermic() ? TEXT("  (cold!)") : TEXT("")),
+			TempColor, BarX, BarY - 2.f, nullptr, 0.85f);
+
+		// Oxygen only appears when it matters.
+		if (Survival->GetOxygenFraction() < 0.999f || Player->IsHeadUnderwater())
+		{
+			const float Oxygen = Survival->GetOxygenFraction();
+			const FLinearColor OxygenColor = Oxygen < 0.25f ? Accent : FLinearColor(0.75f, 0.9f, 1.f);
+			DrawBar(CenterX - 110.f, ScreenH - 70.f, 220.f, 12.f, Oxygen, OxygenColor,
+				Oxygen <= 0.f ? TEXT("DROWNING!") : TEXT("OXYGEN"));
+		}
 	}
 
 	// ----- Weapon and ammo (bottom-right) -----

@@ -123,7 +123,11 @@ float ANAWeapon::GetCurrentSpreadDegrees() const
 	{
 		Spread *= Character->IsSprinting() ? 2.f : 1.4f;
 	}
-	if (Character->bIsCrouched)
+	if (Character->IsProne())
+	{
+		Spread *= 0.45f; // Prone is the steadiest position.
+	}
+	else if (Character->bIsCrouched)
 	{
 		Spread *= 0.7f;
 	}

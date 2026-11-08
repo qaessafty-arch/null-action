@@ -92,6 +92,7 @@ void ANACharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ANACharacterBase, Weapons);
 	DOREPLIFETIME(ANACharacterBase, CurrentWeapon);
 	DOREPLIFETIME(ANACharacterBase, bIsAiming);
+	DOREPLIFETIME(ANACharacterBase, bIsProne);
 }
 
 void ANACharacterBase::BeginPlay()
@@ -104,6 +105,7 @@ void ANACharacterBase::BeginPlay()
 	DefaultCapsuleVisibilityResponse = GetCapsuleComponent()->GetCollisionResponseToChannel(ECC_Visibility);
 
 	HealthComponent->OnDeathStateChanged.AddDynamic(this, &ANACharacterBase::HandleDeathStateChanged);
+	HealthComponent->OnHealthChanged.AddDynamic(this, &ANACharacterBase::HandleHealthChanged);
 	if (HasAuthority())
 	{
 		HealthComponent->OnKilled.AddDynamic(this, &ANACharacterBase::HandleKilled);
@@ -148,6 +150,7 @@ void ANACharacterBase::SetDesiredGait(ENAGait NewGait)
 
 	if (NewGait == ENAGait::Sprint && bIsCrouched)
 	{
+		SetProne(false);
 		UnCrouch();
 	}
 
@@ -193,14 +196,34 @@ void ANACharacterBase::ApplyGait()
 		Speed = FMath::Min(Speed, RunSpeed) * AimSpeedMultiplier;
 	}
 
+	float CrouchedSpeed = bIsProne ? ProneSpeed : CrouchSpeed;
+	if (bIsAiming)
+	{
+		CrouchedSpeed *= AimSpeedMultiplier;
+	}
+
+	// Badly hurt: limp.
+	if (HealthComponent && !HealthComponent->IsDead() &&
+		HealthComponent->GetHealth() < HealthComponent->GetMaxHealth() * InjuredHealthFraction)
+	{
+		Speed *= 0.75f;
+		CrouchedSpeed *= 0.75f;
+	}
+
 	GetCharacterMovement()->MaxWalkSpeed = Speed;
-	GetCharacterMovement()->MaxWalkSpeedCrouched = bIsAiming ? CrouchSpeed * AimSpeedMultiplier : CrouchSpeed;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchedSpeed;
 }
 
 void ANACharacterBase::ToggleCrouch()
 {
 	if (IsDead())
 	{
+		return;
+	}
+
+	if (bIsProne)
+	{
+		SetProne(false); // Prone -> crouch.
 		return;
 	}
 
@@ -226,7 +249,84 @@ void ANACharacterBase::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHei
 void ANACharacterBase::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
 {
 	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+	if (bIsProne)
+	{
+		bIsProne = false; // Standing up always ends prone.
+		ApplyGait();
+	}
 	UpdateFallbackBodyHeight();
+}
+
+void ANACharacterBase::SetProne(bool bNewProne)
+{
+	if (IsDead() || IsInWater())
+	{
+		bNewProne = false;
+	}
+	if (bIsProne == bNewProne)
+	{
+		return;
+	}
+
+	if (bNewProne)
+	{
+		if (Gait == ENAGait::Sprint)
+		{
+			SetDesiredGait(ENAGait::Run);
+		}
+		if (!bIsCrouched)
+		{
+			Crouch(); // Prone uses the crouched capsule; it's predicted by the movement component.
+		}
+	}
+
+	bIsProne = bNewProne;
+	OnRep_Prone();
+
+	if (!HasAuthority())
+	{
+		ServerSetProne(bNewProne);
+	}
+}
+
+void ANACharacterBase::ServerSetProne_Implementation(bool bNewProne)
+{
+	SetProne(bNewProne);
+}
+
+void ANACharacterBase::OnRep_Prone()
+{
+	ApplyGait();
+	UpdateFallbackBodyHeight();
+}
+
+void ANACharacterBase::HandleHealthChanged(float NewHealth, float Delta)
+{
+	ApplyGait(); // Limp starts/stops as health crosses the injury threshold.
+}
+
+void ANACharacterBase::GrantInvulnerability(float Seconds)
+{
+	if (HasAuthority())
+	{
+		InvulnerableUntil = GetWorld()->GetTimeSeconds() + Seconds;
+	}
+}
+
+void ANACharacterBase::Landed(const FHitResult& Hit)
+{
+	const float FallSpeed = -GetVelocity().Z;
+	Super::Landed(Hit);
+
+	// Hard landings hurt (server decides).
+	if (HasAuthority() && FallSpeed > SafeLandingSpeed && !IsInWater())
+	{
+		const float Damage = (FallSpeed - SafeLandingSpeed) * 0.12f;
+		if (HealthComponent)
+		{
+			HealthComponent->ApplyDamage(Damage, ENAHitZone::Limb, nullptr, nullptr, /*bBypassArmor*/ true);
+		}
+	}
 }
 
 // ----- Health and death ------------------------------------------------------------------------
@@ -238,6 +338,11 @@ bool ANACharacterBase::IsDead() const
 
 float ANACharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (GetWorld() && GetWorld()->GetTimeSeconds() < InvulnerableUntil)
+	{
+		return 0.f; // Mid-dodge.
+	}
+
 	const float Damage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	if (Damage <= 0.f || !HealthComponent)
 	{
@@ -551,6 +656,20 @@ void ANACharacterBase::UpdateFallbackBodyHeight()
 	const float HalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
 	const float Radius = GetCapsuleComponent()->GetUnscaledCapsuleRadius();
 
+	if (bIsProne && !IsDead())
+	{
+		// Lying flat along the facing direction, on the ground.
+		constexpr float BodyLength = 170.f;
+		FallbackBody->SetRelativeLocationAndRotation(FVector(15.f, 0.f, -HalfHeight + 22.f), FRotator(90.f, 0.f, 0.f));
+		FallbackBody->SetRelativeScale3D(FVector(0.4f, (Radius * 2.f - 10.f) / NACharacter::ShapeSize, BodyLength / NACharacter::ShapeSize));
+		FallbackVisor->SetRelativeLocation(FVector(15.f + BodyLength * 0.5f, 0.f, -HalfHeight + 30.f));
+		return;
+	}
+
+	if (!IsDead())
+	{
+		FallbackBody->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
 	FallbackBody->SetRelativeScale3D(FVector(
 		(Radius * 2.f - 10.f) / NACharacter::ShapeSize,
 		(Radius * 2.f - 10.f) / NACharacter::ShapeSize,

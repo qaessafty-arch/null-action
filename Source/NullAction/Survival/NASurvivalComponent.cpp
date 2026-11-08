@@ -20,6 +20,8 @@ void UNASurvivalComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME_CONDITION(UNASurvivalComponent, Hunger, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UNASurvivalComponent, Thirst, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UNASurvivalComponent, bExhausted, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UNASurvivalComponent, Oxygen, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UNASurvivalComponent, BodyTemperature, COND_OwnerOnly);
 }
 
 void UNASurvivalComponent::BeginPlay()
@@ -32,6 +34,8 @@ void UNASurvivalComponent::BeginPlay()
 		Stamina = MaxStamina;
 		Hunger = MaxHunger;
 		Thirst = MaxThirst;
+		Oxygen = MaxOxygen;
+		BodyTemperature = NormalTemperature;
 	}
 }
 
@@ -62,6 +66,7 @@ void UNASurvivalComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		float Regen = RegenPerSecond;
 		if (Thirst <= 0.2f * MaxThirst) { Regen *= 0.5f; }
 		if (Hunger <= 0.2f * MaxHunger) { Regen *= 0.75f; }
+		if (BodyTemperature < HypothermiaTemperature) { Regen *= 0.5f; }
 		Stamina = FMath::Min(MaxStamina, Stamina + Regen * DeltaTime);
 	}
 
@@ -76,6 +81,44 @@ void UNASurvivalComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	else if (bExhausted && Stamina >= RecoverFromExhaustionAt)
 	{
 		bExhausted = false;
+	}
+
+	// Breath: drains with your head underwater, recovers at the surface.
+	if (Character->IsHeadUnderwater())
+	{
+		Oxygen = FMath::Max(0.f, Oxygen - OxygenDrainPerSecond * DeltaTime);
+	}
+	else
+	{
+		Oxygen = FMath::Min(MaxOxygen, Oxygen + OxygenRecoverPerSecond * DeltaTime);
+	}
+
+	// Temperature: water chills, dry land slowly warms you back up; sprinting warms a little.
+	if (Character->IsInWater())
+	{
+		BodyTemperature = FMath::Max(30.f, BodyTemperature - WaterCoolingPerSecond * DeltaTime);
+	}
+	else if (BodyTemperature < NormalTemperature)
+	{
+		const float Warm = WarmingPerSecond * (Character->IsSprinting() ? 1.6f : 1.f);
+		BodyTemperature = FMath::Min(NormalTemperature, BodyTemperature + Warm * DeltaTime);
+	}
+
+	float EnvironmentDps = 0.f;
+	if (Oxygen <= 0.f) { EnvironmentDps += DrowningDamagePerSecond; }
+	if (BodyTemperature < SevereHypothermiaTemperature) { EnvironmentDps += 1.f; }
+	if (EnvironmentDps > 0.f)
+	{
+		PendingEnvironmentDamage += EnvironmentDps * DeltaTime;
+		if (PendingEnvironmentDamage >= 1.f)
+		{
+			const float Whole = FMath::FloorToFloat(PendingEnvironmentDamage);
+			PendingEnvironmentDamage -= Whole;
+			if (UNAHealthComponent* Health = Character->GetHealthComponent())
+			{
+				Health->ApplyDamage(Whole, ENAHitZone::Body, nullptr, nullptr, /*bBypassArmor*/ true);
+			}
+		}
 	}
 
 	if (Hunger <= 0.f || Thirst <= 0.f)

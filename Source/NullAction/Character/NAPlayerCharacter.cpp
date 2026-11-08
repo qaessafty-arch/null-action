@@ -19,6 +19,8 @@
 #include "Survival/NASurvivalComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
+#include "World/NAWaterVolume.h"
+#include "TimerManager.h"
 
 ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -42,6 +44,10 @@ ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializ
 
 	SurvivalComponent = CreateDefaultSubobject<UNASurvivalComponent>(TEXT("Survival"));
 
+	// Swimming uses the movement component's flying mode (predicted and replicated like walking).
+	GetCharacterMovement()->MaxFlySpeed = SwimSpeed;
+	GetCharacterMovement()->BrakingDecelerationFlying = 1200.f;
+
 	// Every player starts with a pistol; the rest are found as pickups.
 	DefaultWeapons.Add(ANAWeapon_Pistol::StaticClass());
 }
@@ -60,6 +66,241 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 	{
 		UpdateFootstepNoise();
 	}
+
+	UpdateSwimming();
+}
+
+// ----- Water -------------------------------------------------------------------------------------
+
+bool ANAPlayerCharacter::IsSwimming() const
+{
+	return GetCharacterMovement()->MovementMode == MOVE_Flying;
+}
+
+bool ANAPlayerCharacter::IsInWater() const
+{
+	float SurfaceZ = 0.f;
+	return ANAWaterVolume::FindWaterAt(GetWorld(), GetActorLocation(), SurfaceZ) && GetActorLocation().Z - 60.f < SurfaceZ;
+}
+
+bool ANAPlayerCharacter::IsHeadUnderwater() const
+{
+	float SurfaceZ = 0.f;
+	const FVector Eyes = GetPawnViewLocation();
+	return ANAWaterVolume::FindWaterAt(GetWorld(), Eyes, SurfaceZ) && Eyes.Z < SurfaceZ;
+}
+
+bool ANAPlayerCharacter::IsCameraUnderwater() const
+{
+	float SurfaceZ = 0.f;
+	const FVector CameraLocation = FollowCamera->GetComponentLocation();
+	return ANAWaterVolume::FindWaterAt(GetWorld(), CameraLocation, SurfaceZ) && CameraLocation.Z < SurfaceZ;
+}
+
+void ANAPlayerCharacter::UpdateSwimming()
+{
+	// The server and the owning client both decide from the same position, so they agree.
+	if (!HasAuthority() && !IsLocallyControlled())
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	float SurfaceZ = 0.f;
+	const bool bInWaterArea = ANAWaterVolume::FindWaterAt(GetWorld(), GetActorLocation(), SurfaceZ);
+	const float CenterZ = GetActorLocation().Z;
+	const bool bSwimmingNow = Move->MovementMode == MOVE_Flying;
+
+	if (IsDead())
+	{
+		if (bSwimmingNow) { Move->SetMovementMode(MOVE_Falling); }
+		return;
+	}
+
+	if (!bSwimmingNow && bInWaterArea && CenterZ < SurfaceZ - 30.f)
+	{
+		SetProne(false);
+		if (bIsCrouched) { UnCrouch(); }
+		Move->SetMovementMode(MOVE_Flying);
+	}
+	else if (bSwimmingNow && (!bInWaterArea || CenterZ > SurfaceZ + 40.f))
+	{
+		Move->SetMovementMode(MOVE_Falling);
+	}
+
+	if (Move->MovementMode != MOVE_Flying)
+	{
+		return;
+	}
+
+	Move->MaxFlySpeed = IsSprinting() ? FastSwimSpeed : SwimSpeed;
+
+	// Float at the surface: you can't swim up out of the water (climb out with Space at the edge).
+	if (CenterZ > SurfaceZ - 25.f && Move->Velocity.Z > 0.f)
+	{
+		Move->Velocity.Z = 0.f;
+	}
+
+	if (IsLocallyControlled())
+	{
+		const float Vertical = (bSwimAscend ? 1.f : 0.f) - (bSwimDescend ? 1.f : 0.f);
+		if (!FMath::IsNearlyZero(Vertical))
+		{
+			AddMovementInput(FVector::UpVector, Vertical);
+		}
+	}
+}
+
+// ----- Vault / climb (mantle) --------------------------------------------------------------------
+
+bool ANAPlayerCharacter::FindMantle(FVector& OutLaunchVelocity) const
+{
+	if (IsDead() || bIsProne)
+	{
+		return false;
+	}
+
+	const UWorld* World = GetWorld();
+	const FVector Location = GetActorLocation();
+	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const float Radius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+	const float FeetZ = Location.Z - HalfHeight;
+	FVector Forward = GetActorForwardVector().GetSafeNormal2D();
+	if (!GetLastMovementInputVector().IsNearlyZero())
+	{
+		Forward = GetLastMovementInputVector().GetSafeNormal2D();
+	}
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(NAMantle), false, this);
+
+	// 1) Something solid right in front, at knee-to-chest height.
+	FHitResult WallHit;
+	const FVector WallStart(Location.X, Location.Y, FeetZ + 55.f);
+	if (!World->LineTraceSingleByChannel(WallHit, WallStart, WallStart + Forward * (Radius + 70.f), ECC_Visibility, Params) ||
+		FMath::Abs(WallHit.ImpactNormal.Z) > 0.3f)
+	{
+		return false;
+	}
+
+	// 2) Find its top by tracing down just beyond the wall face.
+	const FVector Over = WallHit.ImpactPoint + Forward * 30.f;
+	FHitResult TopHit;
+	if (!World->LineTraceSingleByChannel(TopHit, FVector(Over.X, Over.Y, FeetZ + MaxMantleHeight + 20.f), FVector(Over.X, Over.Y, FeetZ + 30.f), ECC_Visibility, Params) ||
+		TopHit.ImpactNormal.Z < 0.7f)
+	{
+		return false;
+	}
+
+	const float Height = TopHit.ImpactPoint.Z - FeetZ;
+	if (Height < 45.f || Height > MaxMantleHeight)
+	{
+		return false;
+	}
+
+	// 3) Room to crouch on top.
+	if (World->OverlapBlockingTestByChannel(TopHit.ImpactPoint + FVector(0.f, 0.f, 60.f), FQuat::Identity, ECC_Pawn,
+		FCollisionShape::MakeCapsule(Radius * 0.9f, 55.f), Params))
+	{
+		return false;
+	}
+
+	// Launch just high enough to clear it: low obstacles are vaulted over, tall ones climbed onto.
+	const float Gravity = FMath::Abs(GetCharacterMovement()->GetGravityZ());
+	const float UpSpeed = FMath::Sqrt(2.f * Gravity * (Height + 40.f));
+	const float ForwardSpeed = Height < 140.f ? 420.f : 230.f;
+	OutLaunchVelocity = Forward * ForwardSpeed + FVector(0.f, 0.f, UpSpeed);
+	return true;
+}
+
+void ANAPlayerCharacter::ExecuteMantle(const FVector& LaunchVelocity)
+{
+	if (IsSwimming())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Falling); // Climbing out of the water.
+	}
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	LaunchCharacter(LaunchVelocity, true, true);
+}
+
+void ANAPlayerCharacter::ServerMantle_Implementation()
+{
+	// The server re-checks the obstacle itself; a client can't invent one.
+	FVector Launch;
+	if (FindMantle(Launch) && (!SurvivalComponent || SurvivalComponent->HasStamina(MantleStaminaCost)))
+	{
+		if (SurvivalComponent) { SurvivalComponent->ConsumeStamina(MantleStaminaCost); }
+		ExecuteMantle(Launch);
+	}
+}
+
+// ----- Slide -------------------------------------------------------------------------------------
+
+bool ANAPlayerCharacter::CanSlide() const
+{
+	return !bSliding && !IsDead() && IsSprinting() && GetCharacterMovement()->IsMovingOnGround() && GetVelocity().Size2D() > RunSpeed;
+}
+
+void ANAPlayerCharacter::StartSlide()
+{
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	bSliding = true;
+	bSprintHeld = false;
+	SetDesiredGait(ENAGait::Run);
+	Crouch();
+
+	// Keep momentum: a boost along the current direction, and very little friction for a moment.
+	const FVector Direction = GetVelocity().GetSafeNormal2D();
+	LaunchCharacter(Direction * (GetVelocity().Size2D() + SlideBoost), true, false);
+	DefaultGroundFriction = Move->GroundFriction;
+	DefaultBrakingDeceleration = Move->BrakingDecelerationWalking;
+	Move->GroundFriction = 0.4f;
+	Move->BrakingDecelerationWalking = 250.f;
+	GetWorldTimerManager().SetTimer(SlideTimer, this, &ANAPlayerCharacter::EndSlide, SlideSeconds, false);
+}
+
+void ANAPlayerCharacter::EndSlide()
+{
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	Move->GroundFriction = DefaultGroundFriction;
+	Move->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+	bSliding = false;
+}
+
+void ANAPlayerCharacter::ServerSlide_Implementation()
+{
+	if (CanSlide())
+	{
+		StartSlide();
+	}
+}
+
+// ----- Dodge roll --------------------------------------------------------------------------------
+
+bool ANAPlayerCharacter::CanDodge() const
+{
+	return !IsDead() && !bIsProne && !IsSwimming() && GetCharacterMovement()->IsMovingOnGround() &&
+		GetWorld()->GetTimeSeconds() - LastDodgeTime >= DodgeCooldownSeconds &&
+		(!SurvivalComponent || SurvivalComponent->HasStamina(DodgeStaminaCost));
+}
+
+void ANAPlayerCharacter::ExecuteDodge(const FVector& Direction)
+{
+	LastDodgeTime = GetWorld()->GetTimeSeconds();
+	LaunchCharacter(Direction.GetSafeNormal2D() * DodgeSpeed + FVector(0.f, 0.f, 180.f), true, true);
+}
+
+void ANAPlayerCharacter::ServerDodge_Implementation(FVector_NetQuantizeNormal Direction)
+{
+	if (!CanDodge() || Direction.IsNearlyZero())
+	{
+		return;
+	}
+	if (SurvivalComponent) { SurvivalComponent->ConsumeStamina(DodgeStaminaCost); }
+	GrantInvulnerability(0.35f); // A well-timed roll avoids a hit.
+	ExecuteDodge(Direction);
 }
 
 void ANAPlayerCharacter::UpdateFootstepNoise()
@@ -213,6 +454,8 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot2"), EInputActionValueType::Boolean));
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot3"), EInputActionValueType::Boolean));
 	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot4"), EInputActionValueType::Boolean));
+	ProneAction = MakeAction(TEXT("IA_Prone"), EInputActionValueType::Boolean);
+	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
 
 	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NullActionDefault"), RF_Transient);
 
@@ -284,6 +527,11 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(WeaponSlotActions[2], EKeys::Three);
 	IMC->MapKey(WeaponSlotActions[3], EKeys::Four);
 
+	IMC->MapKey(ProneAction, EKeys::Z);
+	IMC->MapKey(ProneAction, EKeys::Gamepad_DPad_Up);
+	IMC->MapKey(DodgeAction, EKeys::V);
+	IMC->MapKey(DodgeAction, EKeys::Gamepad_RightThumbstick);
+
 	MappingContext = IMC;
 }
 
@@ -307,6 +555,9 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::Input_SprintCompleted);
 	Input->BindAction(WalkAction, ETriggerEvent::Started, this, &ThisClass::Input_WalkToggle);
 	Input->BindAction(CrouchAction, ETriggerEvent::Started, this, &ThisClass::Input_Crouch);
+	Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &ThisClass::Input_CrouchCompleted);
+	if (ProneAction) { Input->BindAction(ProneAction, ETriggerEvent::Started, this, &ThisClass::Input_Prone); }
+	if (DodgeAction) { Input->BindAction(DodgeAction, ETriggerEvent::Started, this, &ThisClass::Input_Dodge); }
 	Input->BindAction(FireAction, ETriggerEvent::Started, this, &ThisClass::Input_FireStarted);
 	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireCompleted);
 	Input->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::Input_AimStarted);
@@ -349,6 +600,16 @@ void ANAPlayerCharacter::Input_Move(const FInputActionValue& Value)
 	}
 
 	const FVector2D Axis = Value.Get<FVector2D>();
+
+	if (IsSwimming())
+	{
+		// In water you swim where you look, including up and down.
+		const FRotationMatrix LookMatrix(Controller->GetControlRotation());
+		AddMovementInput(LookMatrix.GetUnitAxis(EAxis::X), Axis.Y);
+		AddMovementInput(LookMatrix.GetUnitAxis(EAxis::Y), Axis.X);
+		return;
+	}
+
 	const FRotator YawRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
 	const FRotationMatrix YawMatrix(YawRotation);
 
@@ -369,6 +630,27 @@ void ANAPlayerCharacter::Input_JumpStarted()
 	{
 		return;
 	}
+
+	FVector MantleLaunch;
+	const bool bCanMantle = FindMantle(MantleLaunch) && (!SurvivalComponent || SurvivalComponent->HasStamina(MantleStaminaCost));
+
+	if (IsSwimming() && !bCanMantle)
+	{
+		bSwimAscend = true; // Hold Space to swim up.
+		return;
+	}
+	if (bCanMantle)
+	{
+		ExecuteMantle(MantleLaunch); // Predicted locally; the server checks and does the same.
+		if (!HasAuthority()) { ServerMantle(); }
+		else if (SurvivalComponent) { SurvivalComponent->ConsumeStamina(MantleStaminaCost); }
+		return;
+	}
+	if (bIsProne)
+	{
+		SetProne(false); // Prone -> crouch.
+		return;
+	}
 	if (bIsCrouched)
 	{
 		UnCrouch(); // Jump from crouch stands up first, like most shooters.
@@ -383,6 +665,7 @@ void ANAPlayerCharacter::Input_JumpStarted()
 
 void ANAPlayerCharacter::Input_JumpCompleted()
 {
+	bSwimAscend = false;
 	StopJumping();
 }
 
@@ -406,7 +689,53 @@ void ANAPlayerCharacter::Input_WalkToggle()
 
 void ANAPlayerCharacter::Input_Crouch()
 {
+	if (IsSwimming())
+	{
+		bSwimDescend = true; // Hold C to dive.
+		return;
+	}
+	if (CanSlide())
+	{
+		// Tell the server first (while it still sees us sprinting), then predict locally.
+		if (!HasAuthority()) { ServerSlide(); }
+		StartSlide(); // Crouch while sprinting = slide.
+		return;
+	}
 	ToggleCrouch();
+}
+
+void ANAPlayerCharacter::Input_CrouchCompleted()
+{
+	bSwimDescend = false;
+}
+
+void ANAPlayerCharacter::Input_Prone()
+{
+	SetProne(!IsProne());
+}
+
+void ANAPlayerCharacter::Input_Dodge()
+{
+	if (!CanDodge())
+	{
+		return;
+	}
+	// Roll in the direction you're steering; backwards if you aren't moving.
+	FVector Direction = GetLastMovementInputVector().GetSafeNormal2D();
+	if (Direction.IsNearlyZero())
+	{
+		Direction = -GetActorForwardVector().GetSafeNormal2D();
+	}
+	ExecuteDodge(Direction);
+	if (!HasAuthority())
+	{
+		ServerDodge(Direction);
+	}
+	else
+	{
+		if (SurvivalComponent) { SurvivalComponent->ConsumeStamina(DodgeStaminaCost); }
+		GrantInvulnerability(0.35f);
+	}
 }
 
 void ANAPlayerCharacter::UpdateDesiredGait()

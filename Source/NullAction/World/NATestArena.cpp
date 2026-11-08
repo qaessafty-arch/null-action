@@ -110,6 +110,21 @@ ANATestArena::ANATestArena()
 	AddBox(TEXT("Den_Rock4"), FVector(-3500.f, 3050.f, 0.f), FVector(180.f, 240.f, 260.f), FRotator(0.f, 5.f, 0.f), 0);
 	AddBox(TEXT("Den_Bones"), FVector(-2850.f, 2950.f, 0.f), FVector(90.f, 20.f, 12.f), FRotator(0.f, 60.f, 0.f), 3);
 
+	// Diving pool (back-right corner): 3 m walls around 13 m x 13 m of water, 2.8 m deep. Stairs up the +X side.
+	{
+		const FVector C(-2600.f, -2600.f, 0.f);
+		AddBox(TEXT("Pool_WallN"), C + FVector( 680.f, 0.f, 0.f), FVector(40.f, 1400.f, 300.f), FRotator::ZeroRotator, 2);
+		AddBox(TEXT("Pool_WallS"), C + FVector(-680.f, 0.f, 0.f), FVector(40.f, 1400.f, 300.f), FRotator::ZeroRotator, 2);
+		AddBox(TEXT("Pool_WallE"), C + FVector(0.f,  680.f, 0.f), FVector(1320.f, 40.f, 300.f), FRotator::ZeroRotator, 2);
+		AddBox(TEXT("Pool_WallW"), C + FVector(0.f, -680.f, 0.f), FVector(1320.f, 40.f, 300.f), FRotator::ZeroRotator, 2);
+		AddBox(TEXT("Pool_Rock"),  C + FVector(-200.f, 250.f, 0.f), FVector(200.f, 160.f, 120.f), FRotator(0.f, 25.f, 0.f), 0);
+		for (int32 Step = 0; Step < 12; ++Step)
+		{
+			const FName StepName(*FString::Printf(TEXT("Pool_Step_%d"), Step));
+			AddBox(StepName, C + FVector(715.f + (11 - Step) * 30.f, 0.f, 0.f), FVector(30.f, 300.f, 25.f * (Step + 1)), FRotator::ZeroRotator, 3);
+		}
+	}
+
 	// Environment lighting so an empty level is lit. Removed in BeginPlay if the level has its own sun.
 	Sun = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("Sun"));
 	Sun->SetupAttachment(Root);
