@@ -17,6 +17,7 @@ public class NullAction : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"NetCore",
+			"CoreOnline",
 			"AIModule",
 			"NavigationSystem",
 			"GameplayTasks"
