@@ -5,6 +5,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Interaction/NAResourceNode.h"
 #include "Inventory/NAItems.h"
+#include "Core/NAAssetSettings.h"
 
 ANADeer::ANADeer(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -25,4 +26,9 @@ void ANADeer::DropLoot()
 	const FVector Side = GetActorRightVector() * 110.f;
 	ANAItemPickup::Drop(GetWorld(), GetActorLocation() + Side, NAItems::RawMeat(), 3);
 	ANAItemPickup::Drop(GetWorld(), GetActorLocation() - Side, TEXT("DeerHide"), 2);
+}
+
+const FNAModelSlot& ANADeer::GetModelSlot() const
+{
+	return UNAAssetSettings::Get()->Deer;
 }

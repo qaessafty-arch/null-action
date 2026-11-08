@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Core/NAPlayerState.h"
 #include "NAPlayerController.generated.h"
 
 UENUM(BlueprintType)
@@ -50,6 +51,26 @@ enum class ENAAdminCommand : uint8
 	GiveXP
 };
 
+/** Which full-screen menu (if any) this player is looking at. */
+UENUM()
+enum class ENAMenuScreen : uint8
+{
+	None,
+	Intro,
+	Main,
+	Multiplayer,
+	Character,
+	Hunting,
+	Missions,
+	Settings,
+	News,
+	Pause,
+	Controls
+};
+
+class UNALocalProfile;
+class ACameraActor;
+
 /**
  * NULL-ACTION player controller: chat, mute/report, scoreboard toggle and admin console commands.
  * Commands are typed in the console (~). The client only sends requests; the server decides.
@@ -68,6 +89,32 @@ public:
 	UFUNCTION(Exec) void NAMute(const FString& PlayerName);
 	UFUNCTION(Exec) void NAUnmute(const FString& PlayerName);
 	UFUNCTION(Exec) void NAReport(const FString& PlayerName, const FString& Reason);
+	// ----- Menus, intro, settings (NAPlayerController_Menu.cpp; local player only) -----
+	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
+	virtual void PlayerTick(float DeltaTime) override;
+
+	ENAMenuScreen GetMenuScreen() const { return MenuScreen; }
+	bool IsMenuOpen() const { return MenuScreen != ENAMenuScreen::None; }
+	void OpenMenu(ENAMenuScreen Screen);
+	void CloseMenu();
+	/** A menu button was clicked (ids are built by the HUD). */
+	void HandleMenuAction(FName Action);
+
+	float GetMouseSensitivity() const { return MouseSensitivity; }
+	float GetFieldOfView() const { return FieldOfView; }
+	bool IsInvertY() const { return bInvertY; }
+	/** Character studio: the look being edited (applied live to your own body, saved with Save Look). */
+	const FNAAppearance& GetEditedAppearance() const { return EditedAppearance; }
+
+	// Intro state, read by the HUD.
+	FString GetIntroCaption() const { return IntroCaption; }
+	float GetIntroCaptionAlpha() const { return IntroCaptionAlpha; }
+	bool IsIntroTitleShot() const { return bIntroTitle; }
+
+	UFUNCTION(Server, Reliable) void ServerSetInMenu(bool bInMenu);
+	UFUNCTION(Server, Reliable) void ServerSetAppearance(const FNAAppearance& Look);
+
 	/** Pick your class: Phantom, Hunter, Storm or Guardian (each has one power on Q). */
 	UFUNCTION(Exec) void NAClass(const FString& ClassName);
 
@@ -131,4 +178,36 @@ private:
 	float LastXPTime = -100.f;
 	int32 LastXPAmount = 0;
 	FString LastXPReason;
+
+	// Menus (NAPlayerController_Menu.cpp)
+	void TogglePauseMenu();
+	void OnMenuClick();
+	void SkipIntro();
+	void UpdateMenuCamera(float DeltaTime);
+	void BuildIntroShots();
+	void ApplyGraphicsDelta(int32 QualityDelta);
+	void SaveProfile();
+	void SyncMenuPawnState();
+	bool UsesMenuCamera() const;
+	TWeakObjectPtr<APawn> MenuDisabledPawn;
+	bool bMenuProtectionSent = false;
+
+	ENAMenuScreen MenuScreen = ENAMenuScreen::None;
+	UPROPERTY(Transient) TObjectPtr<UNALocalProfile> Profile;
+	UPROPERTY(Transient) TObjectPtr<ACameraActor> MenuCamera;
+	float MouseSensitivity = 1.f;
+	float FieldOfView = 85.f;
+	bool bInvertY = false;
+	FNAAppearance EditedAppearance;
+	float MenuOrbitYaw = 0.f;
+	float StudioYaw = 180.f;
+	float StudioDistance = 260.f;
+
+	struct FIntroShot { FVector From; FVector To; FVector LookAt; float Duration; FString Caption; bool bTitle; };
+	TArray<FIntroShot> IntroShots;
+	int32 IntroShotIndex = 0;
+	float IntroShotTime = 0.f;
+	FString IntroCaption;
+	float IntroCaptionAlpha = 0.f;
+	bool bIntroTitle = false;
 };

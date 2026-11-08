@@ -1,6 +1,53 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — **v2.0: the big Stage 5 update** (survival conditions, progression, wolves/deer, world events, rarity loot, shipwreck, binoculars, Engineer class, Ash Glider flying mount) on top of 5E horses (v1.4). Written in one batch at the owner's request; **not yet built**. Last confirmed build: v1.3. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v2.1: Stage 6 presentation (main menu over the live world, intro, character studio, settings, pause) + real-asset slots (Project Settings → NULL-ACTION Assets; see Docs/REAL_ASSETS_GUIDE.md). Not yet built; v2.0 not yet built either. Last confirmed build: v1.3._
+
+## v2.1: Stage 6 presentation, part 1 + real-asset slots
+
+Status: **written, not yet compiled or tested (v2.1).** v2.0 hasn't been built yet either, so the first build may report errors from both.
+
+- **Intro (first launch):** a camera journey through the live world (the lake, the Ash Crater, the Old Cabin, an Ash Shrine) with story captions, ending in the NULL-ACTION title reveal.
+  - Letterbox bars. **Space or click skips it.**
+  - It plays only on first launch (saved on this PC). **REPLAY INTRO** is in the main menu.
+  - It's built from cameras moving through the real world, not a Sequencer asset (no music yet).
+- **Main menu** over the live world: a slow aerial orbit of the arena while time, weather and creatures carry on. Your body is hidden, ignored by AI and can't be hurt while you're in it. Buttons, all working:
+  - **Play.**
+  - **Multiplayer:** Host = listen server; Join this PC; instructions for LAN/internet/dedicated play.
+  - **Character Studio.**
+  - **Hunting Guide:** bestiary and gear.
+  - **Missions & Events:** shows the live world event.
+  - **Inventory / Progression:** open the I menu or skills tab in game.
+  - **Settings, News, Replay Intro, Exit.**
+  - **Friends** is greyed out ("needs online accounts") until Stage 3B: honest rather than a fake button.
+- **Character Studio:**
+  - The camera orbits your real character; rotate and zoom with buttons.
+  - Options: outfit (6), skin (5), goggle colour (6), helmet on/off, backpack on/off. Changes preview live.
+  - **Save Look** stores it on this PC and sends it to the server. It's replicated, so every player sees your look on any server; it's re-sent each time you join. **Reset** and **Back (discard)** also work.
+- **Settings** (apply immediately and are saved):
+  - graphics quality Low/Medium/High/Epic, resolution scale, window/fullscreen, V-Sync, frame limit (Unlimited/60/120/144);
+  - mouse sensitivity, field of view (70–110), invert Y.
+  - Audio settings wait for the sound pass.
+- **Pause menu:** **Esc or P** (in the editor, Esc stops Play, so use **P**). Resume, Settings, Controls, Main Menu, Quit. Single player really pauses; online the world keeps going and you're **not** protected (no dodging fights by pausing).
+- **Real-asset slots:** **Project Settings → Game → NULL-ACTION Assets**.
+  - Characters: Player, Soldier.
+  - Creatures: Ash Stalker, Wolf, Horse, Deer, Ash Glider, Boss.
+  - Environment: terrain material, tree meshes, rock meshes, grass, bushes, plus scales.
+  - Empty slot = stand-in shapes. Filled = the real model (creature hit zones keep working).
+  - Full walkthrough: **Docs/REAL_ASSETS_GUIDE.md**.
+
+Honest limits:
+- Menus are drawn with Canvas (code), not UMG widgets.
+- No music or sound yet; no Sequencer cinematic.
+- Customisation colours the stand-in body; with a real mesh it would need material slots (next step).
+- Joining over the internet needs typing `open <IP>` in the console (no IP text box yet).
+
+### v2.1 test checklist
+- [ ] First launch: the intro plays; Space skips it; the next launch goes straight to the main menu
+- [ ] Main menu: the world orbits behind it; every button does something; Friends is greyed out
+- [ ] Character Studio: change outfit/skin/goggles/helmet, Save; walk around; a second player sees your look
+- [ ] Settings: change graphics quality and FOV, close and restart, settings are kept
+- [ ] P in game: pause menu; Resume; Main Menu returns to the orbit
+- [ ] Project Settings → NULL-ACTION Assets: set Tree Meshes to any static mesh → trees change in game
 
 ## v2.0: the big Stage 5 update (owner asked for one massive update)
 

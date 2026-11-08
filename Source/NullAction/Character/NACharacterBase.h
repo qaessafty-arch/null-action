@@ -74,6 +74,12 @@ public:
 	/** Server only: ignore all damage for a moment (dodge roll). */
 	void GrantInvulnerability(float Seconds);
 
+	/** Any machine: recolour the stand-in body and show/hide helmet and backpack. */
+	void ApplyAppearance(const struct FNAAppearance& Look);
+
+	/** Real-model slot from Project Settings -> NULL-ACTION Assets (null = none for this class). */
+	virtual const struct FNAModelSlot* GetModelSlot() const { return nullptr; }
+
 	/** Server: re-apply progression skill effects (players override). */
 	virtual void ApplyProgression() {}
 
@@ -251,6 +257,8 @@ protected:
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "NullAction|Appearance") TObjectPtr<USceneComponent> FallbackRoot;
 	UPROPERTY() TObjectPtr<USceneComponent> FallbackPelvis;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> FallbackHelmet;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> FallbackPack;
 	UPROPERTY() TObjectPtr<USceneComponent> FallbackSpine;
 	UPROPERTY() TObjectPtr<USceneComponent> FallbackNeck;
 	UPROPERTY() TArray<TObjectPtr<USceneComponent>> FallbackShoulders; // [0] left, [1] right

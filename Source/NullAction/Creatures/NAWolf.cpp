@@ -4,6 +4,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Interaction/NAResourceNode.h"
 #include "Inventory/NAItems.h"
+#include "Core/NAAssetSettings.h"
 
 ANAWolf::ANAWolf(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -29,4 +30,9 @@ void ANAWolf::DropLoot()
 	const FVector Side = GetActorRightVector() * 120.f;
 	ANAItemPickup::Drop(GetWorld(), GetActorLocation() + Side, TEXT("WolfPelt"), 1);
 	ANAItemPickup::Drop(GetWorld(), GetActorLocation() - Side, NAItems::RawMeat(), 2);
+}
+
+const FNAModelSlot& ANAWolf::GetModelSlot() const
+{
+	return UNAAssetSettings::Get()->Wolf;
 }

@@ -11,6 +11,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Core/NAPlayerState.h"
 
 namespace NABody
 {
@@ -72,12 +73,12 @@ void ANACharacterBase::BuildFallbackHumanoid()
 	FallbackBody = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FallbackBody"));
 	Part(nullptr, FallbackSpine, Cube, FVector(0.f, 0.f, 26.f), FVector(24.f, 40.f, 50.f), NABody::EPaint::Outfit, FallbackBody);
 	Part(TEXT("FB_Vest"), FallbackSpine, Cube, FVector(3.f, 0.f, 28.f), FVector(26.f, 34.f, 34.f), NABody::EPaint::Gear);
-	Part(TEXT("FB_Pack"), FallbackSpine, Cube, FVector(-17.f, 0.f, 30.f), FVector(12.f, 28.f, 32.f), NABody::EPaint::Outfit);
+	FallbackPack = Part(TEXT("FB_Pack"), FallbackSpine, Cube, FVector(-17.f, 0.f, 30.f), FVector(12.f, 28.f, 32.f), NABody::EPaint::Outfit);
 
 	FallbackNeck = Joint(TEXT("FB_Neck"), FallbackSpine, FVector(0.f, 0.f, 52.f));
 	Part(TEXT("FB_NeckPart"), FallbackNeck, Cylinder, FVector(0.f, 0.f, 4.f), FVector(11.f, 11.f, 10.f), NABody::EPaint::Skin);
 	Part(TEXT("FB_Head"), FallbackNeck, Sphere, FVector(1.f, 0.f, 19.f), FVector(21.f, 19.f, 24.f), NABody::EPaint::Skin);
-	Part(TEXT("FB_Helmet"), FallbackNeck, Sphere, FVector(-1.f, 0.f, 25.f), FVector(23.f, 22.f, 16.f), NABody::EPaint::Outfit);
+	FallbackHelmet = Part(TEXT("FB_Helmet"), FallbackNeck, Sphere, FVector(-1.f, 0.f, 25.f), FVector(23.f, 22.f, 16.f), NABody::EPaint::Outfit);
 	FallbackVisor = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FallbackVisor"));
 	Part(nullptr, FallbackNeck, Cube, FVector(9.f, 0.f, 21.f), FVector(5.f, 16.f, 5.f), NABody::EPaint::Accent, FallbackVisor);
 
@@ -126,6 +127,17 @@ void ANACharacterBase::ApplyFallbackColors()
 	{
 		MID->SetVectorParameterValue(TEXT("Color"), FallbackAccentColor);
 	}
+}
+
+void ANACharacterBase::ApplyAppearance(const FNAAppearance& Look)
+{
+	FallbackOutfitColor = NAAppearance::OutfitColor(Look.Outfit);
+	FallbackPantsColor = NAAppearance::PantsColor(Look.Outfit);
+	FallbackSkinColor = NAAppearance::SkinColor(Look.Skin);
+	FallbackAccentColor = NAAppearance::AccentColor(Look.Accent);
+	ApplyFallbackColors();
+	if (FallbackHelmet) { FallbackHelmet->SetHiddenInGame(!Look.bHelmet); }
+	if (FallbackPack) { FallbackPack->SetHiddenInGame(!Look.bBackpack); }
 }
 
 void ANACharacterBase::SetFallbackVisible(bool bVisible)

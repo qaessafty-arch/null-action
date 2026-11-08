@@ -19,6 +19,7 @@ public:
 
 	virtual FString GetSpeciesName() const override { return TEXT("Grey Wolf"); }
 	virtual int32 GetXPReward() const override { return 30; }
+	virtual const FNAModelSlot& GetModelSlot() const override;
 
 protected:
 	virtual void DropLoot() override;

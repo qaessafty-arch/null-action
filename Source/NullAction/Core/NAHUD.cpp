@@ -344,6 +344,18 @@ void ANAHUD::DrawHUD()
 		return;
 	}
 
+	// Full-screen menus and the intro take over the screen.
+	MenuButtons.Reset();
+	if (ANAPlayerController* MenuPC = Cast<ANAPlayerController>(GetOwningPlayerController()))
+	{
+		if (MenuPC->IsMenuOpen())
+		{
+			DrawMenu(MenuPC, Canvas->ClipX, Canvas->ClipY);
+			DrawChat(Canvas->ClipY);
+			return;
+		}
+	}
+
 	DrawChat(Canvas->ClipY);
 	DrawKillFeed(Canvas->ClipX);
 	if (bShowScoreboard)
@@ -429,7 +441,7 @@ void ANAHUD::DrawHUD()
 	// ----- Help text (top-left): hidden until F1 -----
 	if (!bShowDebugOverlay)
 	{
-		DrawText(TEXT("F1  controls     NULL-ACTION dev build 2.0"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
+		DrawText(TEXT("F1  controls     NULL-ACTION dev build 2.1"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
 	}
 	else
 	{
@@ -440,7 +452,7 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 2.0"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 2.1"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);

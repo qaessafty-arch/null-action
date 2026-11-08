@@ -61,6 +61,8 @@ public:
 	// ----- Species (subclasses such as ANAWolf override these) -----
 	virtual FString GetSpeciesName() const { return TEXT("Ash Stalker"); }
 	virtual int32 GetXPReward() const { return 60; }
+	/** Real-model slot (Project Settings -> NULL-ACTION Assets). */
+	virtual const struct FNAModelSlot& GetModelSlot() const;
 	/** What respawns it when it dies: 0 = Ash Stalker den, 1 = wolf pack, 2 = never (world-event creature). */
 	uint8 GetSpawnGroup() const { return SpawnGroup; }
 	void SetSpawnGroup(uint8 Group) { SpawnGroup = Group; }

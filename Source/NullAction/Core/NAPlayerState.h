@@ -38,6 +38,33 @@ enum class ENASkill : uint8
 	Count UMETA(Hidden)
 };
 
+/** How a player's character looks (character studio). Indices into NAAppearance preset tables. */
+USTRUCT(BlueprintType)
+struct FNAAppearance
+{
+	GENERATED_BODY()
+
+	UPROPERTY() uint8 Outfit = 0;
+	UPROPERTY() uint8 Skin = 1;
+	UPROPERTY() uint8 Accent = 0;
+	UPROPERTY() bool bHelmet = true;
+	UPROPERTY() bool bBackpack = true;
+};
+
+namespace NAAppearance
+{
+	constexpr int32 OutfitCount = 6;
+	constexpr int32 SkinCount = 5;
+	constexpr int32 AccentCount = 6;
+	NULLACTION_API FLinearColor OutfitColor(int32 Index);
+	NULLACTION_API FLinearColor PantsColor(int32 Index);
+	NULLACTION_API FLinearColor SkinColor(int32 Index);
+	NULLACTION_API FLinearColor AccentColor(int32 Index);
+	NULLACTION_API const TCHAR* OutfitName(int32 Index);
+	NULLACTION_API const TCHAR* SkinName(int32 Index);
+	NULLACTION_API const TCHAR* AccentName(int32 Index);
+}
+
 /** Per-player data every client can see: name (engine), score, role. Survives a reconnect. */
 UCLASS()
 class NULLACTION_API ANAPlayerState : public APlayerState
@@ -95,6 +122,11 @@ public:
 	void SetProgress(int32 NewLevel, int32 NewXP, int32 NewPoints, const TArray<int32>& NewRanks);
 	const TArray<int32>& GetSkillRanks() const { return SkillRanks; }
 
+	// ----- Appearance (character studio; replicated so everyone sees it) -----
+	const FNAAppearance& GetAppearance() const { return Appearance; }
+	/** Server: validated (indices clamped). */
+	void SetAppearance(const FNAAppearance& NewAppearance);
+
 	// ----- Class -----
 	ENAArchetype GetArchetype() const { return Archetype; }
 	void SetArchetype(ENAArchetype NewArchetype) { Archetype = NewArchetype; }
@@ -111,5 +143,7 @@ protected:
 	UPROPERTY(Replicated) int32 XP = 0;
 	UPROPERTY(Replicated) int32 SkillPoints = 0;
 	UPROPERTY(Replicated) TArray<int32> SkillRanks;
+	UPROPERTY(ReplicatedUsing = OnRep_Appearance) FNAAppearance Appearance;
+	UFUNCTION() void OnRep_Appearance();
 	TWeakObjectPtr<AActor> AttunedShrine;
 };

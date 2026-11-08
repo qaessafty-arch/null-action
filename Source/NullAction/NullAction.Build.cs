@@ -21,7 +21,8 @@ public class NullAction : ModuleRules
 			"AIModule",
 			"NavigationSystem",
 			"GameplayTasks",
-			"ProceduralMeshComponent"
+			"ProceduralMeshComponent",
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

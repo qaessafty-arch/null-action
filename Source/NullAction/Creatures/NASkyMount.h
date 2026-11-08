@@ -30,6 +30,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual FString GetMountName() const override { return TEXT("Ash Glider"); }
+	virtual const FNAModelSlot& GetModelSlot() const override;
+	virtual USceneComponent* GetShapeRoot() const override { return GliderRoot; }
 	virtual bool HasFood(const UNAInventoryComponent* Inventory) const override;
 	virtual bool ConsumeFood(UNAInventoryComponent* Inventory) const override;
 	virtual FString FoodHint() const override { return TEXT("bring Raw or Cooked Meat while it's perched"); }

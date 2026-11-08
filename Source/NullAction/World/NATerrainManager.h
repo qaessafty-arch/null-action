@@ -40,6 +40,9 @@ struct FNATerrainChunk
 	/** Cosmetic ground cover (clients only, no collision, culled at a distance). */
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Grass;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Bushes;
+	/** Real tree / rock meshes from Project Settings -> NULL-ACTION Assets (one component per mesh). */
+	UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> RealTrees;
+	UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> RealRocks;
 };
 
 /**

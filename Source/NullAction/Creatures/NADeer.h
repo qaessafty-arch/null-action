@@ -24,4 +24,5 @@ protected:
 	virtual bool ShouldSpookFrom(const ANAPlayerCharacter* Player, float Distance) const override;
 	virtual float GetFleeSpeed() const override { return 1150.f; }
 	virtual void DropLoot() override;
+	virtual const FNAModelSlot& GetModelSlot() const override;
 };

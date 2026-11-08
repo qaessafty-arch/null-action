@@ -1,6 +1,7 @@
 #include "Core/NAPlayerState.h"
 
 #include "Net/UnrealNetwork.h"
+#include "Character/NACharacterBase.h"
 
 void ANAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -17,6 +18,47 @@ void ANAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANAPlayerState, XP);
 	DOREPLIFETIME(ANAPlayerState, SkillPoints);
 	DOREPLIFETIME(ANAPlayerState, SkillRanks);
+	DOREPLIFETIME(ANAPlayerState, Appearance);
+}
+
+namespace NAAppearance
+{
+	static const FLinearColor Outfits[OutfitCount] = { FLinearColor(0.16f, 0.2f, 0.12f), FLinearColor(0.08f, 0.08f, 0.09f), FLinearColor(0.3f, 0.26f, 0.18f),
+		FLinearColor(0.12f, 0.16f, 0.24f), FLinearColor(0.35f, 0.1f, 0.06f), FLinearColor(0.45f, 0.45f, 0.43f) };
+	static const FLinearColor Pants[OutfitCount] = { FLinearColor(0.09f, 0.09f, 0.1f), FLinearColor(0.05f, 0.05f, 0.05f), FLinearColor(0.18f, 0.15f, 0.1f),
+		FLinearColor(0.07f, 0.08f, 0.12f), FLinearColor(0.1f, 0.08f, 0.07f), FLinearColor(0.2f, 0.2f, 0.2f) };
+	static const TCHAR* OutfitNames[OutfitCount] = { TEXT("Ranger (olive)"), TEXT("Shadow (black)"), TEXT("Nomad (desert)"), TEXT("Tidewalker (navy)"), TEXT("Ember (rust)"), TEXT("Ashen (grey)") };
+	static const FLinearColor Skins[SkinCount] = { FLinearColor(0.85f, 0.66f, 0.55f), FLinearColor(0.55f, 0.38f, 0.28f), FLinearColor(0.4f, 0.26f, 0.17f),
+		FLinearColor(0.26f, 0.16f, 0.1f), FLinearColor(0.72f, 0.56f, 0.4f) };
+	static const TCHAR* SkinNames[SkinCount] = { TEXT("Light"), TEXT("Medium"), TEXT("Tan"), TEXT("Deep"), TEXT("Olive") };
+	static const FLinearColor Accents[AccentCount] = { FLinearColor(0.1f, 0.75f, 0.95f), FLinearColor(0.95f, 0.22f, 0.16f), FLinearColor(0.3f, 1.f, 0.4f),
+		FLinearColor(1.f, 0.65f, 0.1f), FLinearColor(0.75f, 0.4f, 1.f), FLinearColor(0.95f, 0.95f, 0.95f) };
+	static const TCHAR* AccentNames[AccentCount] = { TEXT("Ion blue"), TEXT("Null red"), TEXT("Signal green"), TEXT("Ember gold"), TEXT("Void violet"), TEXT("White") };
+
+	FLinearColor OutfitColor(int32 Index) { return Outfits[FMath::Clamp(Index, 0, OutfitCount - 1)]; }
+	FLinearColor PantsColor(int32 Index)  { return Pants[FMath::Clamp(Index, 0, OutfitCount - 1)]; }
+	FLinearColor SkinColor(int32 Index)   { return Skins[FMath::Clamp(Index, 0, SkinCount - 1)]; }
+	FLinearColor AccentColor(int32 Index) { return Accents[FMath::Clamp(Index, 0, AccentCount - 1)]; }
+	const TCHAR* OutfitName(int32 Index)  { return OutfitNames[FMath::Clamp(Index, 0, OutfitCount - 1)]; }
+	const TCHAR* SkinName(int32 Index)    { return SkinNames[FMath::Clamp(Index, 0, SkinCount - 1)]; }
+	const TCHAR* AccentName(int32 Index)  { return AccentNames[FMath::Clamp(Index, 0, AccentCount - 1)]; }
+}
+
+void ANAPlayerState::SetAppearance(const FNAAppearance& NewAppearance)
+{
+	Appearance = NewAppearance;
+	Appearance.Outfit = static_cast<uint8>(FMath::Clamp<int32>(NewAppearance.Outfit, 0, NAAppearance::OutfitCount - 1));
+	Appearance.Skin = static_cast<uint8>(FMath::Clamp<int32>(NewAppearance.Skin, 0, NAAppearance::SkinCount - 1));
+	Appearance.Accent = static_cast<uint8>(FMath::Clamp<int32>(NewAppearance.Accent, 0, NAAppearance::AccentCount - 1));
+	OnRep_Appearance();
+}
+
+void ANAPlayerState::OnRep_Appearance()
+{
+	if (ANACharacterBase* Body = GetPawn<ANACharacterBase>())
+	{
+		Body->ApplyAppearance(Appearance);
+	}
 }
 
 FString ANAPlayerState::SkillName(ENASkill Skill)
@@ -118,6 +160,7 @@ void ANAPlayerState::CopyProperties(APlayerState* PlayerState)
 		Target->XP = XP;
 		Target->SkillPoints = SkillPoints;
 		Target->SkillRanks = SkillRanks;
+		Target->Appearance = Appearance;
 	}
 }
 

@@ -24,6 +24,7 @@
 #include "Inventory/NAInventoryComponent.h"
 #include "Character/NAPlayerCharacter.h"
 #include "Hunting/NACreatureTrack.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NACreatureBody
 {
@@ -203,6 +204,12 @@ void ANACreature::BeginPlay()
 		}
 	}
 
+	// A real model replaces the shape body visually; the (now invisible) shape parts still take the bullet hits.
+	if (NAAssets::ApplyModel(GetModelSlot(), GetMesh(), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()))
+	{
+		VisualRoot->SetVisibility(false, true);
+	}
+
 	HealthComponent->OnDeathStateChanged.AddDynamic(this, &ANACreature::HandleDeathStateChanged);
 	if (HasAuthority())
 	{
@@ -291,6 +298,11 @@ void ANACreature::OnRep_BiteCount()
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, BiteSound, GetActorLocation());
 	}
+}
+
+const FNAModelSlot& ANACreature::GetModelSlot() const
+{
+	return UNAAssetSettings::Get()->AshStalker;
 }
 
 FName ANACreature::GetSkinItem() const

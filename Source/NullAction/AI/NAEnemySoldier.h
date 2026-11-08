@@ -24,6 +24,7 @@ public:
 	void SetAlert(ENAAlertState NewState, AActor* NewTarget);
 
 	ENAAlertState GetAlertState() const { return AlertState; }
+	virtual const struct FNAModelSlot* GetModelSlot() const override;
 	AActor* GetAlertTarget() const { return AlertTarget; }
 
 	/** World-space patrol route; if empty, the soldier patrols a square around where it spawned. */

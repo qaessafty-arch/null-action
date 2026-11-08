@@ -16,6 +16,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "World/NAWorldEnvironment.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NASky
 {
@@ -418,4 +419,9 @@ void ANASkyMount::Input_Dismount()
 		return;
 	}
 	Super::Input_Dismount();
+}
+
+const FNAModelSlot& ANASkyMount::GetModelSlot() const
+{
+	return UNAAssetSettings::Get()->AshGlider;
 }

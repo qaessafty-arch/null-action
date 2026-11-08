@@ -13,6 +13,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Core/NAAssetSettings.h"
 #include "Weapons/NAWeaponTypes.h"
 
 ANAEnemySoldier::ANAEnemySoldier(const FObjectInitializer& ObjectInitializer)
@@ -95,4 +96,9 @@ void ANAEnemySoldier::OnKilled(AController* Killer)
 	}
 
 	Super::OnKilled(Killer);
+}
+
+const FNAModelSlot* ANAEnemySoldier::GetModelSlot() const
+{
+	return &UNAAssetSettings::Get()->Soldier;
 }

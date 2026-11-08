@@ -13,6 +13,8 @@
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Core/NAAssetSettings.h"
+#include "Misc/PackageName.h"
 
 // ----- World shape --------------------------------------------------------------------------------
 
@@ -326,11 +328,12 @@ void ANATerrainManager::BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key
 		TArray<int32> Triangles;
 		TArray<FVector> Normals;
 		TArray<FVector2D> UVs;
+		TArray<FLinearColor> Colors;
 		TMap<int32, int32> Remap;
 	};
 	FSection Sections[SurfaceCount];
 
-	auto AddVertex = [&](FSection& Section, int32 GridIndex)
+	auto AddVertex = [&](FSection& Section, int32 GridIndex, int32 SurfaceIndex)
 	{
 		if (const int32* Existing = Section.Remap.Find(GridIndex))
 		{
@@ -339,6 +342,7 @@ void ANATerrainManager::BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key
 		const int32 NewIndex = Section.Vertices.Add(GridPositions[GridIndex]);
 		Section.Normals.Add(GridNormals[GridIndex]);
 		Section.UVs.Add(FVector2D(GridPositions[GridIndex].X, GridPositions[GridIndex].Y) / 400.f);
+		Section.Colors.Add(SurfaceColors[SurfaceIndex]); // Lets a real terrain material tint by surface type.
 		Section.Remap.Add(GridIndex, NewIndex);
 		return NewIndex;
 	};
@@ -353,18 +357,26 @@ void ANATerrainManager::BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key
 			const int32 I11 = I01 + 1;
 			const FVector Middle = (GridPositions[I00] + GridPositions[I11]) * 0.5f;
 			const FVector MiddleNormal = (GridNormals[I00] + GridNormals[I11]).GetSafeNormal();
-			FSection& Section = Sections[SurfaceAt(OriginX + Middle.X, OriginY + Middle.Y, Middle.Z, MiddleNormal)];
+			const int32 SurfaceIndex = static_cast<int32>(SurfaceAt(OriginX + Middle.X, OriginY + Middle.Y, Middle.Z, MiddleNormal));
+			FSection& Section = Sections[SurfaceIndex];
 
-			const int32 A = AddVertex(Section, I00);
-			const int32 B = AddVertex(Section, I10);
-			const int32 C = AddVertex(Section, I01);
-			const int32 D = AddVertex(Section, I11);
+			const int32 A = AddVertex(Section, I00, SurfaceIndex);
+			const int32 B = AddVertex(Section, I10, SurfaceIndex);
+			const int32 C = AddVertex(Section, I01, SurfaceIndex);
+			const int32 D = AddVertex(Section, I11, SurfaceIndex);
 			Section.Triangles.Append({ A, C, B, B, C, D });
 		}
 	}
 
-	const TArray<FLinearColor> NoColors;
 	const TArray<FProcMeshTangent> NoTangents;
+	UMaterialInterface* RealGround = nullptr;
+	{
+		const TSoftObjectPtr<UMaterialInterface>& Configured = UNAAssetSettings::Get()->TerrainMaterial;
+		if (!Configured.IsNull() && FPackageName::DoesPackageExist(Configured.ToSoftObjectPath().GetLongPackageName()))
+		{
+			RealGround = Configured.LoadSynchronous();
+		}
+	}
 	for (int32 Surface = 0; Surface < SurfaceCount; ++Surface)
 	{
 		FSection& Section = Sections[Surface];
@@ -372,8 +384,12 @@ void ANATerrainManager::BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key
 		{
 			continue;
 		}
-		Ground->CreateMeshSection_LinearColor(Surface, Section.Vertices, Section.Triangles, Section.Normals, Section.UVs, NoColors, NoTangents, /*bCreateCollision*/ true);
-		if (SurfaceMaterials.IsValidIndex(Surface))
+		Ground->CreateMeshSection_LinearColor(Surface, Section.Vertices, Section.Triangles, Section.Normals, Section.UVs, Section.Colors, NoTangents, /*bCreateCollision*/ true);
+		if (RealGround)
+		{
+			Ground->SetMaterial(Surface, RealGround);
+		}
+		else if (SurfaceMaterials.IsValidIndex(Surface))
 		{
 			Ground->SetMaterial(Surface, SurfaceMaterials[Surface]);
 		}
@@ -414,6 +430,27 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 		Chunk.Foliage = MakeInstances(ConeShape, NeedleMaterial, false);
 	}
 
+	// Real meshes from Project Settings -> NULL-ACTION Assets replace the shape trees/rocks when set.
+	const UNAAssetSettings* Assets = UNAAssetSettings::Get();
+	TArray<UStaticMesh*> TreeModels;
+	TArray<UStaticMesh*> RockModels;
+	for (const TSoftObjectPtr<UStaticMesh>& Path : Assets->TreeMeshes) { if (UStaticMesh* Model = NAAssets::LoadStatic(Path)) { TreeModels.Add(Model); } }
+	for (const TSoftObjectPtr<UStaticMesh>& Path : Assets->RockMeshes) { if (UStaticMesh* Model = NAAssets::LoadStatic(Path)) { RockModels.Add(Model); } }
+	auto RealInstances = [this](TArray<TObjectPtr<UInstancedStaticMeshComponent>>& Group, const TArray<UStaticMesh*>& Models, int32 Pick, const TCHAR* Tag)
+	{
+		if (Group.Num() != Models.Num())
+		{
+			for (UStaticMesh* Model : Models)
+			{
+				UInstancedStaticMeshComponent* Instances = MakeInstances(Model, nullptr, true);
+				Instances->SetMaterial(0, nullptr); // Use the mesh's own materials.
+				Instances->ComponentTags.Add(Tag);
+				Group.Add(Instances);
+			}
+		}
+		return Group[Pick % Group.Num()].Get();
+	};
+
 	// 8 x 8 cells per chunk; each cell may hold one tree, decided by a hash of its world cell.
 	constexpr int32 Cells = 8;
 	const float CellSize = ChunkSize / Cells;
@@ -438,6 +475,13 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 			const float TreeLine = 4200.f;
 			if (Z < TreeLine && Roll < NATerrain::ForestDensityAt(X, Y) * 0.9f)
 			{
+				if (TreeModels.Num() > 0)
+				{
+					UInstancedStaticMeshComponent* Trees = RealInstances(Chunk.RealTrees, TreeModels, Random.RandRange(0, 1000), TEXT("NA.Tree"));
+					const float Size = Random.FRandRange(0.8f, 1.25f) * Assets->TreeScale;
+					Trees->AddInstance(FTransform(FRotator(0.f, Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z - 10.f), FVector(Size)), true);
+					continue;
+				}
 				// Pine: trunk plus two stacked cones.
 				const float TreeHeight = Random.FRandRange(900.f, 1700.f);
 				const float Width = TreeHeight * Random.FRandRange(0.22f, 0.3f);
@@ -453,6 +497,13 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 			}
 			else if (Roll > 0.93f)
 			{
+				if (RockModels.Num() > 0)
+				{
+					UInstancedStaticMeshComponent* Rocks = RealInstances(Chunk.RealRocks, RockModels, Random.RandRange(0, 1000), TEXT("NA.Rock"));
+					const float RockSize = Random.FRandRange(0.7f, 1.6f) * Assets->RockScale;
+					Rocks->AddInstance(FTransform(FRotator(Random.FRandRange(-10.f, 10.f), Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z - 20.f), FVector(RockSize)), true);
+					continue;
+				}
 				// Boulder, half buried.
 				const FVector Size(Random.FRandRange(80.f, 320.f), Random.FRandRange(80.f, 320.f), Random.FRandRange(60.f, 220.f));
 				Chunk.Rocks->AddInstance(FTransform(FRotator(Random.FRandRange(-15.f, 15.f), Random.FRandRange(0.f, 360.f), Random.FRandRange(-15.f, 15.f)),
@@ -468,8 +519,11 @@ void ANATerrainManager::BuildGroundCover(FNATerrainChunk& Chunk, const FIntPoint
 	{
 		return; // Purely visual.
 	}
-	Chunk.Grass = MakeInstances(ConeShape, GrassMaterial, false);
-	Chunk.Bushes = MakeInstances(SphereShape, BushMaterial, false);
+	const UNAAssetSettings* Assets = UNAAssetSettings::Get();
+	UStaticMesh* RealGrass = NAAssets::LoadStatic(Assets->GrassMesh);
+	UStaticMesh* RealBush = NAAssets::LoadStatic(Assets->BushMesh);
+	Chunk.Grass = MakeInstances(RealGrass ? RealGrass : ConeShape.Get(), RealGrass ? nullptr : GrassMaterial.Get(), false);
+	Chunk.Bushes = MakeInstances(RealBush ? RealBush : SphereShape.Get(), RealBush ? nullptr : BushMaterial.Get(), false);
 	Chunk.Grass->SetCullDistances(0, 6500);
 	Chunk.Grass->SetCastShadow(false);
 	Chunk.Bushes->SetCullDistances(0, 12000);
@@ -501,14 +555,28 @@ void ANATerrainManager::BuildGroundCover(FNATerrainChunk& Chunk, const FIntPoint
 			}
 			const float Height = Random.FRandRange(25.f, 55.f) * (Patch > 0.f ? 1.f : 0.6f);
 			const FRotator Tilt(Random.FRandRange(-12.f, 12.f), Random.FRandRange(0.f, 360.f), Random.FRandRange(-12.f, 12.f));
-			Chunk.Grass->AddInstance(FTransform(Tilt, FVector(X, Y, Z + Height * 0.45f), FVector(0.07f, 0.07f, Height / 100.f)), true);
+			if (RealGrass)
+			{
+				Chunk.Grass->AddInstance(FTransform(FRotator(0.f, Tilt.Yaw, 0.f), FVector(X, Y, Z), FVector(Assets->GrassScale * Random.FRandRange(0.7f, 1.2f))), true);
+			}
+			else
+			{
+				Chunk.Grass->AddInstance(FTransform(Tilt, FVector(X, Y, Z + Height * 0.45f), FVector(0.07f, 0.07f, Height / 100.f)), true);
+			}
 
 			// Occasional low bush, more of them near the forest edge.
 			if (Random.FRand() < 0.025f + NATerrain::ForestDensityAt(X, Y) * 0.05f)
 			{
 				const float Size = Random.FRandRange(70.f, 160.f);
-				Chunk.Bushes->AddInstance(FTransform(FRotator(0.f, Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z + Size * 0.3f),
-					FVector(Size, Size * Random.FRandRange(0.8f, 1.2f), Size * 0.7f) / 100.f), true);
+				if (RealBush)
+				{
+					Chunk.Bushes->AddInstance(FTransform(FRotator(0.f, Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z), FVector(Size / 100.f)), true);
+				}
+				else
+				{
+					Chunk.Bushes->AddInstance(FTransform(FRotator(0.f, Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z + Size * 0.3f),
+						FVector(Size, Size * Random.FRandRange(0.8f, 1.2f), Size * 0.7f) / 100.f), true);
+				}
 			}
 		}
 	}
@@ -542,5 +610,7 @@ void ANATerrainManager::DestroyChunk(FNATerrainChunk& Chunk)
 	if (Chunk.Rocks)   { Chunk.Rocks->DestroyComponent(); }
 	if (Chunk.Grass)   { Chunk.Grass->DestroyComponent(); }
 	if (Chunk.Bushes)  { Chunk.Bushes->DestroyComponent(); }
+	for (UInstancedStaticMeshComponent* Instances : Chunk.RealTrees) { if (Instances) { Instances->DestroyComponent(); } }
+	for (UInstancedStaticMeshComponent* Instances : Chunk.RealRocks) { if (Instances) { Instances->DestroyComponent(); } }
 	Chunk = FNATerrainChunk();
 }

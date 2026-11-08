@@ -31,6 +31,7 @@
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 #include "World/NAWaterVolume.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NAHorseTuning
 {
@@ -180,6 +181,10 @@ void ANAHorse::BeginPlay()
 	}
 	OnRep_Coat();
 	OnRep_Tamed();
+	if (NAAssets::ApplyModel(GetModelSlot(), GetMesh(), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()))
+	{
+		if (USceneComponent* Shapes = GetShapeRoot()) { Shapes->SetVisibility(false, true); }
+	}
 	for (UStaticMeshComponent* Part : HoofParts)
 	{
 		if (UMaterialInstanceDynamic* MID = Part->CreateAndSetMaterialInstanceDynamic(0))
@@ -243,6 +248,11 @@ void ANAHorse::HandleKilled(AActor* Victim, AController* Killer)
 	{
 		GameMode->OnHorseKilled(this, Killer);
 	}
+}
+
+const FNAModelSlot& ANAHorse::GetModelSlot() const
+{
+	return UNAAssetSettings::Get()->Horse;
 }
 
 bool ANAHorse::HasFood(const UNAInventoryComponent* Inventory) const

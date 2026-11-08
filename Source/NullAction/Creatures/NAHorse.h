@@ -111,6 +111,9 @@ protected:
 	virtual float GetFleeSpeed() const;
 	virtual void DropLoot();
 	virtual FString GetMountName() const { return TEXT("horse"); }
+	virtual const struct FNAModelSlot& GetModelSlot() const;
+	/** Shape components to hide when a real model is plugged in. */
+	virtual USceneComponent* GetShapeRoot() const { return VisualRoot; }
 	/** Server: take one food item for taming; returns false if the player has none. */
 	virtual bool ConsumeFood(class UNAInventoryComponent* Inventory) const;
 	virtual bool HasFood(const class UNAInventoryComponent* Inventory) const;

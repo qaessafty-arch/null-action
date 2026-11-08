@@ -89,6 +89,7 @@ void ANAPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(ANAPlayerCharacter, bAdminFlying, COND_OwnerOnly);
 	DOREPLIFETIME(ANAPlayerCharacter, ReviveProgress);
+	DOREPLIFETIME(ANAPlayerCharacter, bInMenu);
 	DOREPLIFETIME(ANAPlayerCharacter, RecoveringUntil);
 	DOREPLIFETIME(ANAPlayerCharacter, CarriedBy);
 	DOREPLIFETIME(ANAPlayerCharacter, CarriedPlayer);
@@ -401,7 +402,8 @@ void ANAPlayerCharacter::UpdateCamera(float DeltaSeconds)
 	const bool bAimingWeapon = IsAiming() && Weapon;
 
 	float TargetLength = StandingArmLength;
-	float TargetFieldOfView = DefaultFieldOfView;
+	const ANAPlayerController* SettingsPC = Cast<ANAPlayerController>(GetController());
+	float TargetFieldOfView = SettingsPC ? SettingsPC->GetFieldOfView() : DefaultFieldOfView;
 	if (bAimingWeapon)
 	{
 		TargetLength = Weapon->GetStats().AimArmLength;
@@ -748,8 +750,11 @@ void ANAPlayerCharacter::Input_Move(const FInputActionValue& Value)
 void ANAPlayerCharacter::Input_Look(const FInputActionValue& Value)
 {
 	const FVector2D Axis = Value.Get<FVector2D>();
-	AddControllerYawInput(Axis.X);
-	AddControllerPitchInput(Axis.Y);
+	const ANAPlayerController* PC = Cast<ANAPlayerController>(GetController());
+	const float Sensitivity = PC ? PC->GetMouseSensitivity() : 1.f;
+	const float PitchSign = PC && PC->IsInvertY() ? -1.f : 1.f;
+	AddControllerYawInput(Axis.X * Sensitivity);
+	AddControllerPitchInput(Axis.Y * Sensitivity * PitchSign);
 }
 
 void ANAPlayerCharacter::Input_JumpStarted()

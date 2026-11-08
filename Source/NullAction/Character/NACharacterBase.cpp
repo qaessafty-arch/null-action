@@ -18,6 +18,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Weapons/NAWeapon.h"
 #include "World/NAWorldEnvironment.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NACharacter
 {
@@ -694,6 +695,15 @@ bool ANACharacterBase::HasRealBody() const
 void ANACharacterBase::ResolveAppearance()
 {
 	USkeletalMeshComponent* MeshComp = GetMesh();
+
+	// 1) A model plugged in through Project Settings -> NULL-ACTION Assets wins.
+	if (const FNAModelSlot* Slot = GetModelSlot())
+	{
+		if (!MeshComp->GetSkeletalMeshAsset())
+		{
+			NAAssets::ApplyModel(*Slot, MeshComp, GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+		}
+	}
 
 	// Only touch disk if the asset is actually in the project; a missing pack is expected, not an error.
 	auto AssetExists = [](const FSoftObjectPath& Path)

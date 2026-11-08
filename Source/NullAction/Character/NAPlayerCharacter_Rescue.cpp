@@ -9,6 +9,7 @@
 #include "Core/NAPlayerState.h"
 #include "Creatures/NAHorse.h"
 #include "Core/NAGameMode.h"
+#include "Core/NAAssetSettings.h"
 #include "Creatures/NACreature.h"
 #include "Creatures/NABoss.h"
 #include "Survival/NASurvivalComponent.h"
@@ -34,6 +35,29 @@ void ANAPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	ApplyProgression();
+	if (const ANAPlayerState* State = GetPlayerState<ANAPlayerState>())
+	{
+		ApplyAppearance(State->GetAppearance());
+	}
+}
+
+void ANAPlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	if (const ANAPlayerState* State = GetPlayerState<ANAPlayerState>())
+	{
+		ApplyAppearance(State->GetAppearance()); // Everyone sees each player's chosen look.
+	}
+}
+
+void ANAPlayerCharacter::SetInMenu(bool bNewInMenu)
+{
+	bInMenu = bNewInMenu;
+}
+
+const FNAModelSlot* ANAPlayerCharacter::GetModelSlot() const
+{
+	return &UNAAssetSettings::Get()->Player;
 }
 
 void ANAPlayerCharacter::ApplyProgression()
@@ -53,6 +77,10 @@ void ANAPlayerCharacter::ApplyProgression()
 
 float ANAPlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (bInMenu)
+	{
+		return 0.f; // Safe while sitting in the menus.
+	}
 	const float Dealt = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	// Heavy hits and animal bites can open a bleeding wound.
 	if (Dealt > 0.f && !IsDead() && SurvivalComponent)
@@ -90,7 +118,8 @@ bool ANAPlayerCharacter::IsRecovering() const
 
 bool ANAPlayerCharacter::IsCloaked() const
 {
-	return AbilityComponent && AbilityComponent->IsCloaked();
+	// In the menus the body stays in the world but is hidden and ignored, like a cloak.
+	return bInMenu || (AbilityComponent && AbilityComponent->IsCloaked());
 }
 
 float ANAPlayerCharacter::GetExtraSpeedMultiplier() const
@@ -311,6 +340,13 @@ void ANAPlayerCharacter::UpdateRescue(float DeltaSeconds)
 		for (ANAWeapon* Weapon : GetWeapons())
 		{
 			if (Weapon) { HideParts(Weapon); }
+		}
+		if (!bHide)
+		{
+			if (const ANAPlayerState* State = GetPlayerState<ANAPlayerState>())
+			{
+				ApplyAppearance(State->GetAppearance()); // Restore helmet/backpack choices after un-hiding.
+			}
 		}
 	}
 }

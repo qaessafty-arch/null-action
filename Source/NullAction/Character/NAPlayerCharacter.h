@@ -43,7 +43,16 @@ public:
 	virtual bool IsInWater() const override;
 	virtual bool IsHeadUnderwater() const override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+
+	/** Server: the player is in the menus (hidden, ignored by AI, can't be hurt). */
+	void SetInMenu(bool bNewInMenu);
+	bool IsInMenu() const { return bInMenu; }
+	/** Local: open the I menu on a tab (0 items, 1 crafting, 2 skills). */
+	void CloseInventoryMenu() { bInventoryOpen = false; }
+	void OpenInventoryTab(int32 Tab) { bInventoryOpen = true; InventoryTab = FMath::Clamp(Tab, 0, 2); InventoryIndex = 0; }
 	virtual void ApplyProgression() override;
+	virtual const struct FNAModelSlot* GetModelSlot() const override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	/** Local: is the camera under the water surface (for the HUD tint)? */
@@ -118,6 +127,7 @@ protected:
 
 	/** Revive progress 0..1 from teammates' steady E taps (CPR rhythm). */
 	UPROPERTY(Replicated) float ReviveProgress = 0.f;
+	UPROPERTY(Replicated) bool bInMenu = false;
 	/** Server time until the post-revive weakness wears off. */
 	UPROPERTY(Replicated) float RecoveringUntil = -1.f;
 	UPROPERTY(ReplicatedUsing = OnRep_CarriedBy) TObjectPtr<ANAPlayerCharacter> CarriedBy;

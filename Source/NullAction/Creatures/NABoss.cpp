@@ -25,6 +25,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Core/NAAssetSettings.h"
 
 namespace NABossTuning
 {
@@ -209,6 +210,10 @@ void ANABoss::BeginPlay()
 		{
 			MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.9f, 0.05f, 0.02f));
 		}
+	}
+	if (NAAssets::ApplyModel(UNAAssetSettings::Get()->Boss, GetMesh(), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()))
+	{
+		VisualRoot->SetVisibility(false, true); // Real model; invisible shape parts still take the hits.
 	}
 	HealthComponent->OnDeathStateChanged.AddDynamic(this, &ANABoss::HandleDeathStateChanged);
 	if (HasAuthority())
