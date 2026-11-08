@@ -9,7 +9,8 @@ _Last updated: 2026-11-08 — Milestone 1 (project foundation + first playable c
 | Project compiles in UE 5.8 (VS 2026) | ✅ **Verified**: editor opened with the NullAction module built |
 | Game mode + dev HUD load in Play | ✅ **Verified** |
 | Enhanced Input reaches the character (Shift → HUD shows Sprint) | ✅ **Verified** |
-| Test arena appears in an empty level | ❌ **Bug found**: the editor's temporary PIE spawn point made the game mode think the level was real, so no arena was built and the player fell into the void. **Fixed** in `Core/NAGameMode.cpp` (ignores the PIE start, always uses arena spawns in arena mode). First attempt included a header that does not exist in 5.8 (`GameFramework/PlayerStartPIE.h`, C1083); now matched by class name instead. Fix not yet re-tested. |
+| Test arena appears in an empty level | ✅ **Verified** after fix: arena, lighting, sky, shadows, pillars and wall render; player spawns on the floor with the stand-in body and third-person camera. (First run showed a bug: the editor's temporary PIE spawn point stopped the arena from building. Fixed in `Core/NAGameMode.cpp`; the first fix attempt used a header missing in 5.8, so it now matches the PIE start by class name.) |
+| Full movement checklist (walk/run/sprint speeds, jump boxes, crouch tunnel, stairs, ramp, camera collision, gamepad, 2-player PIE) | ⏳ Waiting for owner's results |
 
 ## ⚠️ Read first: build state
 
