@@ -5,6 +5,8 @@
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
+#include "Components/VolumetricCloudComponent.h"
+#include "Components/PostProcessComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -56,6 +58,35 @@ ANAWorldEnvironment::ANAWorldEnvironment()
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("Fog"));
 	Fog->SetupAttachment(SceneRoot);
+	Fog->SetVolumetricFog(true); // Light shafts through the trees and mist at dawn.
+	Fog->SetFogHeightFalloff(0.06f);
+
+	Clouds = CreateDefaultSubobject<UVolumetricCloudComponent>(TEXT("Clouds"));
+	Clouds->SetupAttachment(SceneRoot);
+	Clouds->SetLayerBottomAltitude(4.f);  // km
+	Clouds->SetLayerHeight(6.f);
+
+	Grade = CreateDefaultSubobject<UPostProcessComponent>(TEXT("Grade"));
+	Grade->SetupAttachment(SceneRoot);
+	Grade->bUnbound = true;
+	Grade->Priority = -1.f; // Any post-process volume placed in a level wins.
+	FPostProcessSettings& Look = Grade->Settings;
+	Look.bOverride_ColorSaturation = true;
+	Look.ColorSaturation = FVector4(0.9f, 0.9f, 0.9f, 1.f);
+	Look.bOverride_ColorContrast = true;
+	Look.ColorContrast = FVector4(1.08f, 1.08f, 1.08f, 1.f);
+	Look.bOverride_ColorGain = true;
+	Look.ColorGain = FVector4(1.03f, 1.f, 0.96f, 1.f); // Slightly warm.
+	Look.bOverride_VignetteIntensity = true;
+	Look.VignetteIntensity = 0.45f;
+	Look.bOverride_BloomIntensity = true;
+	Look.BloomIntensity = 0.55f;
+	Look.bOverride_FilmGrainIntensity = true;
+	Look.FilmGrainIntensity = 0.08f;
+	Look.bOverride_AutoExposureBias = true;
+	Look.AutoExposureBias = 0.3f;
+	Look.bOverride_AmbientOcclusionIntensity = true;
+	Look.AmbientOcclusionIntensity = 0.65f;
 }
 
 ANAWorldEnvironment* ANAWorldEnvironment::Get(const UObject* WorldContext)

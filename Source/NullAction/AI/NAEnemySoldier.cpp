@@ -22,6 +22,12 @@ ANAEnemySoldier::ANAEnemySoldier(const FObjectInitializer& ObjectInitializer)
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 	DefaultWeapons.Add(ANAWeapon_AssaultRifle::StaticClass());
 
+	// Stand-in look: dark red fatigues, black gear, glowing red visor - enemies read clearly at a distance.
+	FallbackOutfitColor = FLinearColor(0.24f, 0.035f, 0.03f);
+	FallbackPantsColor = FLinearColor(0.08f, 0.06f, 0.06f);
+	FallbackGearColor = FLinearColor(0.02f, 0.02f, 0.02f);
+	FallbackAccentColor = FLinearColor(1.f, 0.08f, 0.04f);
+
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	if (ShapeMaterial.Succeeded())
 	{
@@ -57,16 +63,6 @@ float ANAEnemySoldier::TakeDamage(float DamageAmount, FDamageEvent const& Damage
 void ANAEnemySoldier::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Dark red body with a glowing-red visor so enemies read clearly at a distance.
-	if (UMaterialInstanceDynamic* BodyMID = FallbackBody->CreateAndSetMaterialInstanceDynamic(0))
-	{
-		BodyMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.25f, 0.03f, 0.03f));
-	}
-	if (UMaterialInstanceDynamic* VisorMID = FallbackVisor->CreateAndSetMaterialInstanceDynamic(0))
-	{
-		VisorMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.1f, 0.05f));
-	}
 }
 
 void ANAEnemySoldier::SetAlert(ENAAlertState NewState, AActor* NewTarget)

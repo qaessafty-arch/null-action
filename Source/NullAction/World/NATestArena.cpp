@@ -22,10 +22,11 @@ namespace NAArena
 
 	const FLinearColor Palette[] =
 	{
-		FLinearColor(0.08f, 0.08f, 0.09f), // 0 graphite
-		FLinearColor(0.75f, 0.08f, 0.05f), // 1 NULL-ACTION red
-		FLinearColor(0.18f, 0.28f, 0.40f), // 2 steel blue
-		FLinearColor(0.55f, 0.47f, 0.33f), // 3 sand
+		FLinearColor(0.09f, 0.09f, 0.095f), // 0 graphite (walls)
+		FLinearColor(0.42f, 0.09f, 0.06f),  // 1 rust red
+		FLinearColor(0.16f, 0.22f, 0.28f),  // 2 weathered steel
+		FLinearColor(0.42f, 0.36f, 0.27f),  // 3 sandstone
+		FLinearColor(0.27f, 0.26f, 0.245f), // 4 concrete (floor)
 	};
 }
 
@@ -49,7 +50,7 @@ ANATestArena::ANATestArena()
 	const float E = NAArena::FloorHalfExtent;
 
 	// Floor: 80 m x 80 m, top surface at Z = 0.
-	AddBox(TEXT("Floor"), FVector(0.f, 0.f, -100.f), FVector(E * 2.f, E * 2.f, 100.f), FRotator::ZeroRotator, -1);
+	AddBox(TEXT("Floor"), FVector(0.f, 0.f, -100.f), FVector(E * 2.f, E * 2.f, 100.f), FRotator::ZeroRotator, 4); // Concrete, not the debug grid.
 
 	// Perimeter walls.
 	AddBox(TEXT("WallN"), FVector( E, 0.f, 0.f), FVector(50.f, E * 2.f, 150.f), FRotator::ZeroRotator, 0);

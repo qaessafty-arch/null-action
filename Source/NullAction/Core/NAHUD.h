@@ -4,7 +4,10 @@
 #include "GameFramework/HUD.h"
 #include "NAHUD.generated.h"
 
-/** Development HUD: controls reference and live movement/network state. Replaced by UMG UI later. */
+/**
+ * In-game HUD, drawn with Canvas (no widget assets needed): compass, vitals, weapon, prompts, powers,
+ * boss bar, chat and kill feed. The full controls list is hidden behind F1. Moves to UMG in Stage 6.
+ */
 UCLASS()
 class NULLACTION_API ANAHUD : public AHUD
 {
@@ -14,10 +17,11 @@ public:
 	virtual void DrawHUD() override;
 
 	void SetScoreboardVisible(bool bVisible) { bShowScoreboard = bVisible; }
+	void ToggleHelp() { bShowDebugOverlay = !bShowDebugOverlay; }
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|HUD")
-	bool bShowDebugOverlay = true;
+	bool bShowDebugOverlay = false;
 
 private:
 	void DrawChat(float ScreenH);
@@ -32,4 +36,6 @@ private:
 	bool bShowScoreboard = false;
 
 	void DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Color, const FString& Label);
+	void DrawCompass(float CenterX, float Yaw);
+	void DrawPanel(float X, float Y, float Width, float Height);
 };

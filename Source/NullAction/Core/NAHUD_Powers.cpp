@@ -156,12 +156,12 @@ void ANAHUD::DrawPowers(ANAPlayerCharacter* Player, float ScreenW, float ScreenH
 		const float Fraction = BossHealth ? BossHealth->GetHealth() / FMath::Max(1.f, BossHealth->GetMaxHealth()) : 0.f;
 		const float BarW = FMath::Min(640.f, ScreenW - 80.f);
 		const float BarX = CenterX - BarW * 0.5f;
-		DrawRect(PowerDim, BarX - 6.f, 62.f, BarW + 12.f, 44.f);
+		DrawRect(PowerDim, BarX - 6.f, 162.f, BarW + 12.f, 44.f);
 		const FString Title = FString::Printf(TEXT("ASHEN BEHEMOTH%s"), It->GetPhase() >= 3 ? TEXT("  -  ENRAGED") : It->GetPhase() == 2 ? TEXT("  -  EMBER RAIN") : TEXT(""));
-		DrawText(Title, AshColor, BarX, 64.f, nullptr, 1.05f);
-		DrawRect(FLinearColor(0.1f, 0.02f, 0.02f, 0.9f), BarX, 84.f, BarW, 14.f);
-		DrawRect(It->GetPhase() >= 3 ? FLinearColor(1.f, 0.15f, 0.05f) : FLinearColor(0.85f, 0.3f, 0.05f), BarX, 84.f, BarW * FMath::Clamp(Fraction, 0.f, 1.f), 14.f);
-		DrawText(TEXT("Weak points: the glowing core on its back, and the head"), PowerText, BarX, 100.f, nullptr, 0.8f);
+		DrawText(Title, AshColor, BarX, 164.f, nullptr, 1.05f);
+		DrawRect(FLinearColor(0.1f, 0.02f, 0.02f, 0.9f), BarX, 184.f, BarW, 14.f);
+		DrawRect(It->GetPhase() >= 3 ? FLinearColor(1.f, 0.15f, 0.05f) : FLinearColor(0.85f, 0.3f, 0.05f), BarX, 184.f, BarW * FMath::Clamp(Fraction, 0.f, 1.f), 14.f);
+		DrawText(TEXT("Weak points: the glowing core on its back, and the head"), PowerText, BarX, 200.f, nullptr, 0.8f);
 		for (int32 Index = 0; Index < It->NumWarnings(); ++Index)
 		{
 			if (It->GetWarningEnd(Index) > ServerNow &&

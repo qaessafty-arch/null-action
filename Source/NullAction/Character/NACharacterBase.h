@@ -38,6 +38,7 @@ public:
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void Destroyed() override;
 	virtual void Landed(const FHitResult& Hit) override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	// ----- Movement -----
 
@@ -236,6 +237,31 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NullAction|Appearance")
 	TObjectPtr<UStaticMeshComponent> FallbackVisor;
 
+	/**
+	 * Stand-in humanoid (NACharacterBase_Body.cpp): a jointed figure built from engine shapes with a
+	 * procedural walk/run/crouch/aim cycle. FallbackBody is its torso, FallbackVisor the goggles.
+	 * Used only while no skeletal mesh is available.
+	 */
+	UPROPERTY(VisibleAnywhere, Category = "NullAction|Appearance") TObjectPtr<USceneComponent> FallbackRoot;
+	UPROPERTY() TObjectPtr<USceneComponent> FallbackPelvis;
+	UPROPERTY() TObjectPtr<USceneComponent> FallbackSpine;
+	UPROPERTY() TObjectPtr<USceneComponent> FallbackNeck;
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> FallbackShoulders; // [0] left, [1] right
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> FallbackElbows;
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> FallbackHips;
+	UPROPERTY() TArray<TObjectPtr<USceneComponent>> FallbackKnees;
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> FallbackSkinParts;
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> FallbackOutfitParts;
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> FallbackPantsParts;
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> FallbackGearParts;
+
+	/** Stand-in colours; subclasses set these in their constructor. */
+	FLinearColor FallbackOutfitColor = FLinearColor(0.16f, 0.2f, 0.12f);  // Olive jacket.
+	FLinearColor FallbackPantsColor = FLinearColor(0.09f, 0.09f, 0.1f);
+	FLinearColor FallbackSkinColor = FLinearColor(0.55f, 0.38f, 0.28f);
+	FLinearColor FallbackGearColor = FLinearColor(0.03f, 0.03f, 0.03f);   // Boots, belt, pads.
+	FLinearColor FallbackAccentColor = FLinearColor(0.1f, 0.75f, 0.95f);  // Goggles.
+
 	bool HasRealBody() const;
 
 private:
@@ -253,6 +279,11 @@ private:
 
 	void ResolveAppearance();
 	void UpdateFallbackBodyHeight();
+	void BuildFallbackHumanoid();
+	void AnimateFallbackBody(float DeltaSeconds);
+	void ApplyFallbackColors();
+	void SetFallbackVisible(bool bVisible);
+	float FallbackWalkPhase = 0.f;
 	void UpdateRotationMode();
 	void AttachWeapon(ANAWeapon* Weapon);
 

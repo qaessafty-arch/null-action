@@ -525,6 +525,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	ProneAction = MakeAction(TEXT("IA_Prone"), EInputActionValueType::Boolean);
 	DodgeAction = MakeAction(TEXT("IA_Dodge"), EInputActionValueType::Boolean);
 	ScoreboardAction = MakeAction(TEXT("IA_Scoreboard"), EInputActionValueType::Boolean);
+	HelpAction = MakeAction(TEXT("IA_Help"), EInputActionValueType::Boolean);
 	InventoryAction = MakeAction(TEXT("IA_Inventory"), EInputActionValueType::Boolean);
 	MenuUpAction = MakeAction(TEXT("IA_MenuUp"), EInputActionValueType::Boolean);
 	MenuDownAction = MakeAction(TEXT("IA_MenuDown"), EInputActionValueType::Boolean);
@@ -609,6 +610,7 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(DodgeAction, EKeys::V);
 	IMC->MapKey(DodgeAction, EKeys::Gamepad_RightThumbstick);
 	IMC->MapKey(ScoreboardAction, EKeys::Tab);
+	IMC->MapKey(HelpAction, EKeys::F1);
 	IMC->MapKey(ScoreboardAction, EKeys::Gamepad_Special_Left);
 	IMC->MapKey(InventoryAction, EKeys::I);
 	IMC->MapKey(InventoryAction, EKeys::Gamepad_Special_Right);
@@ -652,6 +654,7 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	if (MenuRightAction)   { Input->BindAction(MenuRightAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuRight); }
 	if (MenuConfirmAction) { Input->BindAction(MenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::Input_MenuConfirm); }
 	if (AbilityAction)     { Input->BindAction(AbilityAction, ETriggerEvent::Started, this, &ThisClass::Input_Ability); }
+	if (HelpAction)        { Input->BindAction(HelpAction, ETriggerEvent::Started, this, &ThisClass::Input_Help); }
 	if (ScoreboardAction)
 	{
 		Input->BindAction(ScoreboardAction, ETriggerEvent::Started, this, &ThisClass::Input_ScoreboardStarted);
@@ -814,6 +817,15 @@ void ANAPlayerCharacter::Input_Crouch()
 void ANAPlayerCharacter::Input_CrouchCompleted()
 {
 	bSwimDescend = false;
+}
+
+void ANAPlayerCharacter::Input_Help()
+{
+	const APlayerController* PC = Cast<APlayerController>(GetController());
+	if (ANAHUD* GameHUD = PC ? Cast<ANAHUD>(PC->GetHUD()) : nullptr)
+	{
+		GameHUD->ToggleHelp();
+	}
 }
 
 void ANAPlayerCharacter::Input_ScoreboardStarted()

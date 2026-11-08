@@ -1,6 +1,49 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — v1.1: Milestone 5C (hunting gear: bow, arrows, knife/skinning, snare traps, bait, creature tracks) written, not yet built. v1.0.1 (5B) sent; build result not yet reported. v0.8 confirmed running. 3B waits on the owner's Epic/Google developer accounts._
+_Last updated: 2026-11-08 — v1.3: visual pass (new HUD, human stand-in body, clouds/colour grade/ground cover) on top of 5D (Ashen Behemoth boss, v1.2) and 5C. Written, not yet built. Last confirmed build: v0.8. 3B waits on the owner's Epic/Google developer accounts._
+
+## Visual pass (owner request): new HUD, better character, better world (v1.3)
+
+Status: **written, not yet compiled or tested (v1.3).**
+
+**Character.** The stand-in body was a cylinder with a block for a face. It is now a **jointed human figure** made from engine shapes: helmet, goggles, olive jacket and vest, backpack, arms, legs, knee pads and boots. It animates in code:
+- **Movement:** walk and run strides with arm swing, a forward lean when sprinting, and folded legs when crouched.
+- **Weapons:** both arms come up to hold the weapon, higher when aiming.
+- **Lying down:** face down when prone or downed, on its back when dead.
+
+Soldiers wear dark red with red goggles, and training dummies are orange.
+
+**Real human model (free).** For a properly modelled and animated character, add Epic's free UE mannequin, which you may use in Unreal Engine projects:
+1. In the editor, click **Add** (or **+ Add** in the Content Browser).
+2. Choose **Add Feature or Content Pack → Third Person**, then **Add to Project**.
+3. Restart Play.
+
+The game now looks for the mannequin in all known folder layouts (`SKM_Manny`/`SKM_Manny_Simple`, `ABP_Manny`/`ABP_Unarmed`) and uses it automatically, with per-bone headshots. The jointed figure is only the fallback.
+
+**World.**
+- Engine volumetric clouds.
+- Volumetric fog, so light shafts show through the trees.
+- A world-wide colour grade: slightly desaturated ash look, warm highlights, vignette, light bloom, film grain and ambient occlusion.
+- **Grass tufts** in patches and **bushes** across the open terrain, kept off the arena floor, the cabin, the crater and water.
+- The arena floor is **concrete** instead of the engine's debug grid, and the block colours are toned down to rust, steel and sandstone.
+
+**HUD.**
+- A **compass** strip at the top, with the region name under it.
+- Clock and weather in a panel at the top right; the kill feed moved below it.
+- Vitals in a dark panel with a thicker health bar and labels inside the bars.
+- Weapon slots are small boxes (they no longer run off-screen with 5 weapons).
+- The boss bar moved below the enemy warnings.
+- The controls list is hidden: **F1** shows or hides it.
+
+Honest limits: the jointed body is still a stand-in, and the real fix is the free mannequin above. Grass and bushes are simple shapes, not real foliage meshes. The HUD is still drawn with Canvas; the UMG redesign is Stage 6.
+
+### Visual pass checklist
+- [ ] Builds; top-left says `F1 controls ... dev build 1.3`; F1 opens and closes the controls panel
+- [ ] Your character is a human figure; walking, running, crouching, aiming, prone and dying all look right
+- [ ] Soldiers are red figures, dummies orange
+- [ ] Clouds in the sky; grass and bushes outside the arena; the arena floor is concrete
+- [ ] Compass turns with the camera (N is red); the clock is top right
+- [ ] Optional: add the Third Person pack → the real mannequin replaces the figure
 
 ## Milestone 5D: first boss, the ASHEN BEHEMOTH (Stage 5, part 4)
 

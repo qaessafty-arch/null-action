@@ -14,6 +14,12 @@ ANATrainingDummy::ANATrainingDummy(const FObjectInitializer& ObjectInitializer)
 	AutoPossessAI = EAutoPossessAI::Disabled;
 	GetCharacterMovement()->bRunPhysicsWithNoController = true; // Still has gravity without a controller.
 
+	// Orange so dummies are easy to tell apart from players.
+	FallbackOutfitColor = FLinearColor(0.85f, 0.35f, 0.05f);
+	FallbackPantsColor = FLinearColor(0.6f, 0.25f, 0.04f);
+	FallbackSkinColor = FLinearColor(0.75f, 0.65f, 0.5f);
+	FallbackAccentColor = FLinearColor(0.1f, 0.1f, 0.1f);
+
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	if (ShapeMaterial.Succeeded())
 	{
@@ -24,12 +30,6 @@ ANATrainingDummy::ANATrainingDummy(const FObjectInitializer& ObjectInitializer)
 void ANATrainingDummy::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Orange body so dummies are easy to tell apart from players.
-	if (UMaterialInstanceDynamic* MID = FallbackBody->CreateAndSetMaterialInstanceDynamic(0))
-	{
-		MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.35f, 0.05f));
-	}
 }
 
 void ANATrainingDummy::OnKilled(AController* Killer)

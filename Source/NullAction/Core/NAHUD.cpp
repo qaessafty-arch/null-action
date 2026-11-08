@@ -51,11 +51,78 @@ namespace
 	}
 }
 
+void ANAHUD::DrawPanel(float X, float Y, float Width, float Height)
+{
+	// Dark glass panel with a thin accent edge on the left.
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.45f), X, Y, Width, Height);
+	DrawRect(FLinearColor(Accent.R, Accent.G, Accent.B, 0.8f), X, Y, 2.f, Height);
+}
+
 void ANAHUD::DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Color, const FString& Label)
 {
-	DrawRect(Dim, X, Y, Width, Height);
-	DrawRect(Color, X + 2.f, Y + 2.f, (Width - 4.f) * FMath::Clamp(Fraction, 0.f, 1.f), Height - 4.f);
-	DrawText(Label, TextColor, X + Width + 8.f, Y - 1.f, nullptr, 0.9f);
+	const float Clamped = FMath::Clamp(Fraction, 0.f, 1.f);
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.6f), X, Y, Width, Height);
+	DrawRect(FLinearColor(Color.R * 0.25f, Color.G * 0.25f, Color.B * 0.25f, 0.8f), X + 1.f, Y + 1.f, Width - 2.f, Height - 2.f);
+	DrawRect(Color, X + 1.f, Y + 1.f, (Width - 2.f) * Clamped, Height - 2.f);
+	// Bright top line gives the bar some depth.
+	DrawRect(FLinearColor(1.f, 1.f, 1.f, 0.18f), X + 1.f, Y + 1.f, (Width - 2.f) * Clamped, 1.f);
+	if (Label.IsEmpty())
+	{
+		return;
+	}
+	if (Height >= 14.f)
+	{
+		DrawText(Label, FLinearColor(0.f, 0.f, 0.f, 0.7f), X + 7.f, Y + (Height - 14.f) * 0.5f + 1.f, nullptr, 0.8f);
+		DrawText(Label, TextColor, X + 6.f, Y + (Height - 14.f) * 0.5f, nullptr, 0.8f);
+	}
+	else
+	{
+		DrawText(Label, TextColor, X + Width + 8.f, Y - 3.f, nullptr, 0.8f);
+	}
+}
+
+void ANAHUD::DrawCompass(float CenterX, float Yaw)
+{
+	// A strip of ticks and headings centred on where you're looking (+X is north, +Y east).
+	const float Width = 460.f;
+	const float Top = 14.f;
+	const float DegreesShown = 120.f;
+	DrawRect(FLinearColor(0.f, 0.f, 0.f, 0.4f), CenterX - Width * 0.5f, Top, Width, 26.f);
+	const float Heading = FMath::Fmod(Yaw + 360.f, 360.f);
+	for (int32 Mark = 0; Mark < 360; Mark += 15)
+	{
+		float Delta = FMath::Fmod(Mark - Heading + 540.f, 360.f) - 180.f;
+		if (FMath::Abs(Delta) > DegreesShown * 0.5f)
+		{
+			continue;
+		}
+		const float X = CenterX + Delta / DegreesShown * Width;
+		const float Fade = 1.f - FMath::Abs(Delta) / (DegreesShown * 0.5f) * 0.7f;
+		const TCHAR* Label = nullptr;
+		switch (Mark)
+		{
+		case 0:   Label = TEXT("N");  break;
+		case 45:  Label = TEXT("NE"); break;
+		case 90:  Label = TEXT("E");  break;
+		case 135: Label = TEXT("SE"); break;
+		case 180: Label = TEXT("S");  break;
+		case 225: Label = TEXT("SW"); break;
+		case 270: Label = TEXT("W");  break;
+		case 315: Label = TEXT("NW"); break;
+		default: break;
+		}
+		if (Label)
+		{
+			const FLinearColor Color = Mark == 0 ? FLinearColor(Accent.R, Accent.G, Accent.B, Fade) : FLinearColor(1.f, 1.f, 1.f, Fade);
+			DrawText(Label, Color, X - (Mark % 90 == 0 ? 4.f : 8.f), Top + 5.f, nullptr, 0.95f);
+		}
+		else
+		{
+			DrawLine(X, Top + 18.f, X, Top + 24.f, FLinearColor(1.f, 1.f, 1.f, 0.5f * Fade), 1.f);
+		}
+	}
+	// Centre marker.
+	DrawRect(Accent, CenterX - 1.f, Top - 4.f, 2.f, 8.f);
 }
 
 void ANAHUD::DrawChat(float ScreenH)
@@ -102,7 +169,7 @@ void ANAHUD::DrawKillFeed(float ScreenW)
 		return;
 	}
 	const float Now = GetWorld()->GetTimeSeconds();
-	float Y = 24.f;
+	float Y = 50.f; // Below the clock panel.
 	for (const FNAKillFeedEntry& Entry : State->GetKillFeed())
 	{
 		if (Now - Entry.LocalTime > 8.f)
@@ -280,11 +347,12 @@ void ANAHUD::DrawHUD()
 		const FString Clock = FString::Printf(TEXT("%02d:%02d   %s   %.0f C%s"), Hour, Minute,
 			ANAWorldEnvironment::WeatherName(Environment->GetWeather()), Environment->GetAmbientTemperature(),
 			Environment->IsNight() ? TEXT("   NIGHT") : TEXT(""));
-		DrawRect(Dim, CenterX - 120.f, 18.f, 240.f, 24.f);
-		DrawText(Clock, TextColor, CenterX - 105.f, 21.f, nullptr, 1.f);
-		// Region name under the clock.
+		DrawCompass(CenterX, PC ? PC->GetControlRotation().Yaw : Player->GetActorRotation().Yaw);
+		// Region name under the compass, clock and weather on the top right.
 		const FString Region = NATerrain::RegionAt(Player->GetActorLocation());
-		DrawText(Region.ToUpper(), Accent, CenterX - Region.Len() * 4.5f, 46.f, nullptr, 0.95f);
+		DrawText(Region.ToUpper(), Accent, CenterX - Region.Len() * 4.5f, 44.f, nullptr, 0.95f);
+		DrawPanel(ScreenW - 270.f, 14.f, 250.f, 26.f);
+		DrawText(Clock, TextColor, ScreenW - 260.f, 18.f, nullptr, 0.95f);
 	}
 
 	// ----- Underwater tint -----
@@ -303,16 +371,21 @@ void ANAHUD::DrawHUD()
 		}
 	}
 
-	// ----- Help text (top-left) -----
-	if (bShowDebugOverlay)
+	// ----- Help text (top-left): hidden until F1 -----
+	if (!bShowDebugOverlay)
 	{
+		DrawText(TEXT("F1  controls     NULL-ACTION dev build 1.3"), FLinearColor(1.f, 1.f, 1.f, 0.45f), 24.f, 18.f, nullptr, 0.8f);
+	}
+	else
+	{
+		DrawPanel(14.f, 14.f, FMath::Min(ScreenW * 0.62f, 900.f), 196.f);
 		float Y = 24.f;
 		auto Line = [this, &Y](const FString& Text, const FLinearColor& Color)
 		{
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 1.2"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 1.3"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(TEXT("Z prone  V dodge  Shift+C slide  Space at a wall: vault/climb  In water: Space up, C down"), TextColor);
@@ -462,12 +535,13 @@ void ANAHUD::DrawHUD()
 	const float BarX = 28.f;
 	const float BarW = 220.f;
 	const float BarH = 14.f;
-	float BarY = ScreenH - 130.f;
+	float BarY = ScreenH - 136.f;
+	DrawPanel(BarX - 12.f, BarY - 10.f, BarW + 130.f, ScreenH - BarY - 4.f);
 	if (Health)
 	{
-		DrawBar(BarX, BarY, BarW, BarH, Health->GetHealth() / FMath::Max(Health->GetMaxHealth(), 1.f),
+		DrawBar(BarX, BarY, BarW, BarH + 4.f, Health->GetHealth() / FMath::Max(Health->GetMaxHealth(), 1.f),
 			FLinearColor(0.8f, 0.12f, 0.1f), FString::Printf(TEXT("HEALTH %.0f"), Health->GetHealth()));
-		BarY += 20.f;
+		BarY += 24.f;
 		DrawBar(BarX, BarY, BarW, BarH, Health->GetArmor() / FMath::Max(Health->GetMaxArmor(), 1.f),
 			FLinearColor(0.2f, 0.4f, 0.85f), FString::Printf(TEXT("ARMOR %.0f"), Health->GetArmor()));
 		BarY += 20.f;
@@ -518,17 +592,22 @@ void ANAHUD::DrawHUD()
 		}
 	}
 
-	// ----- Weapon slots -----
-	float SlotX = ScreenW - 260.f;
-	for (const ANAWeapon* Carried : Player->GetWeapons())
+	// ----- Weapon slots: one small box per carried weapon, right-aligned above the ammo panel -----
+	TArray<const ANAWeapon*> Carried;
+	for (const ANAWeapon* Each : Player->GetWeapons())
 	{
-		if (!Carried)
-		{
-			continue;
-		}
-		const bool bCurrent = Carried == Weapon;
-		DrawText(FString::Printf(TEXT("%d %s"), Carried->GetStats().Slot, *Carried->GetStats().DisplayName.ToString()),
-			bCurrent ? Accent : FLinearColor(0.6f, 0.6f, 0.6f), SlotX, ScreenH - 130.f, nullptr, 0.8f);
-		SlotX += 62.f;
+		if (Each) { Carried.Add(Each); }
+	}
+	Carried.Sort([](const ANAWeapon& A, const ANAWeapon& B) { return A.GetStats().Slot < B.GetStats().Slot; });
+	const float SlotW = 50.f;
+	float SlotX = ScreenW - 22.f - Carried.Num() * (SlotW + 4.f);
+	for (const ANAWeapon* Each : Carried)
+	{
+		const bool bCurrent = Each == Weapon;
+		DrawRect(bCurrent ? FLinearColor(Accent.R, Accent.G, Accent.B, 0.75f) : FLinearColor(0.f, 0.f, 0.f, 0.45f), SlotX, ScreenH - 136.f, SlotW, 22.f);
+		const FString Short = Each->GetStats().DisplayName.ToString().Left(5).ToUpper();
+		DrawText(FString::Printf(TEXT("%d %s"), Each->GetStats().Slot, *Short), bCurrent ? FLinearColor::White : FLinearColor(0.7f, 0.7f, 0.7f),
+			SlotX + 4.f, ScreenH - 133.f, nullptr, 0.7f);
+		SlotX += SlotW + 4.f;
 	}
 }

@@ -165,6 +165,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuRightAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> MenuConfirmAction;
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> AbilityAction;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Input") TObjectPtr<UInputAction> HelpAction;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AdminFlying)
 	bool bAdminFlying = false;
@@ -238,6 +239,7 @@ private:
 	void Input_MenuRight();
 	void Input_MenuConfirm();
 	void Input_Ability();
+	void Input_Help();
 
 	// NAPlayerCharacter_Rescue.cpp
 	void UpdateRescue(float DeltaSeconds);

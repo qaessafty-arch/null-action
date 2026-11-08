@@ -8,6 +8,8 @@ class UDirectionalLightComponent;
 class USkyLightComponent;
 class USkyAtmosphereComponent;
 class UExponentialHeightFogComponent;
+class UVolumetricCloudComponent;
+class UPostProcessComponent;
 class ANAPrecipitation;
 class USoundBase;
 
@@ -91,6 +93,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "NullAction|Environment") TObjectPtr<USkyLightComponent> SkyLight;
 	UPROPERTY(VisibleAnywhere, Category = "NullAction|Environment") TObjectPtr<USkyAtmosphereComponent> Atmosphere;
 	UPROPERTY(VisibleAnywhere, Category = "NullAction|Environment") TObjectPtr<UExponentialHeightFogComponent> Fog;
+	/** Engine-provided volumetric clouds (default engine cloud material, no extra assets). */
+	UPROPERTY(VisibleAnywhere, Category = "NullAction|Environment") TObjectPtr<UVolumetricCloudComponent> Clouds;
+	/** World-wide colour grade: the ashen NULL-ACTION look (slight desaturation, warm highlights, vignette). */
+	UPROPERTY(VisibleAnywhere, Category = "NullAction|Environment") TObjectPtr<UPostProcessComponent> Grade;
 
 	/** Optional thunder sound, played after lightning if assigned. */
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Environment") TObjectPtr<USoundBase> ThunderSound;

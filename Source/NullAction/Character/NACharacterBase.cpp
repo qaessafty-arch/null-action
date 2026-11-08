@@ -60,29 +60,7 @@ ANACharacterBase::ANACharacterBase(const FObjectInitializer& ObjectInitializer)
 	BodyMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny")));
 	BodyAnimClass = TSoftClassPtr<UAnimInstance>(FSoftObjectPath(TEXT("/Game/Characters/Mannequins/Animations/ABP_Manny.ABP_Manny_C")));
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
-
-	FallbackBody = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FallbackBody"));
-	FallbackBody->SetupAttachment(GetCapsuleComponent());
-	FallbackBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FallbackBody->SetGenerateOverlapEvents(false);
-	if (CylinderMesh.Succeeded())
-	{
-		FallbackBody->SetStaticMesh(CylinderMesh.Object);
-	}
-
-	// A "visor" block on the face so you can see which way the stand-in body is facing.
-	FallbackVisor = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FallbackVisor"));
-	FallbackVisor->SetupAttachment(GetCapsuleComponent());
-	FallbackVisor->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FallbackVisor->SetGenerateOverlapEvents(false);
-	FallbackVisor->SetRelativeScale3D(FVector(0.12f, 0.4f, 0.12f));
-	if (CubeMesh.Succeeded())
-	{
-		FallbackVisor->SetStaticMesh(CubeMesh.Object);
-	}
-
+	BuildFallbackHumanoid();
 	UpdateFallbackBodyHeight();
 }
 
@@ -100,6 +78,7 @@ void ANACharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void ANACharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyFallbackColors();
 
 	DefaultMeshRelativeLocation = GetMesh()->GetRelativeLocation();
 	DefaultMeshRelativeRotation = GetMesh()->GetRelativeRotation();
@@ -466,10 +445,7 @@ void ANACharacterBase::HandleDeathStateChanged(bool bNowDead)
 		}
 		else
 		{
-			// Stand-in body tips over onto the ground.
-			const float HalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
-			FallbackBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, -HalfHeight + 30.f), FRotator(0.f, 0.f, 90.f));
-			FallbackVisor->SetVisibility(false);
+			UpdateFallbackBodyHeight(); // Stand-in body falls onto its back.
 		}
 	}
 	else
@@ -490,8 +466,7 @@ void ANACharacterBase::HandleDeathStateChanged(bool bNowDead)
 			MeshComp->SetCollisionProfileName(DefaultMeshCollisionProfile);
 		}
 
-		FallbackBody->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
-		FallbackVisor->SetVisibility(!bRealBody);
+		SetFallbackVisible(!bRealBody);
 		UpdateFallbackBodyHeight();
 	}
 }
@@ -716,33 +691,6 @@ bool ANACharacterBase::HasRealBody() const
 	return GetMesh() && GetMesh()->GetSkeletalMeshAsset() != nullptr;
 }
 
-void ANACharacterBase::UpdateFallbackBodyHeight()
-{
-	const float HalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-	const float Radius = GetCapsuleComponent()->GetUnscaledCapsuleRadius();
-
-	if ((bIsProne || IsDowned()) && !IsDead())
-	{
-		// Lying flat along the facing direction, on the ground.
-		constexpr float BodyLength = 170.f;
-		FallbackBody->SetRelativeLocationAndRotation(FVector(15.f, 0.f, -HalfHeight + 22.f), FRotator(90.f, 0.f, 0.f));
-		FallbackBody->SetRelativeScale3D(FVector(0.4f, (Radius * 2.f - 10.f) / NACharacter::ShapeSize, BodyLength / NACharacter::ShapeSize));
-		FallbackVisor->SetRelativeLocation(FVector(15.f + BodyLength * 0.5f, 0.f, -HalfHeight + 30.f));
-		return;
-	}
-
-	if (!IsDead())
-	{
-		FallbackBody->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
-	}
-	FallbackBody->SetRelativeScale3D(FVector(
-		(Radius * 2.f - 10.f) / NACharacter::ShapeSize,
-		(Radius * 2.f - 10.f) / NACharacter::ShapeSize,
-		(HalfHeight * 2.f) / NACharacter::ShapeSize));
-
-	FallbackVisor->SetRelativeLocation(FVector(Radius - 8.f, 0.f, HalfHeight - 25.f));
-}
-
 void ANACharacterBase::ResolveAppearance()
 {
 	USkeletalMeshComponent* MeshComp = GetMesh();
@@ -752,6 +700,42 @@ void ANACharacterBase::ResolveAppearance()
 	{
 		return Path.IsValid() && FPackageName::DoesPackageExist(Path.GetLongPackageName());
 	};
+
+	// Epic's free UE mannequin from the Third Person content pack: its folder layout differs between engine
+	// versions, so try the known locations when the configured one isn't there.
+	if (!AssetExists(BodyMesh.ToSoftObjectPath()))
+	{
+		static const TCHAR* MeshCandidates[] = {
+			TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"),
+			TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"),
+			TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple"),
+			TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn"),
+		};
+		for (const TCHAR* Candidate : MeshCandidates)
+		{
+			if (AssetExists(FSoftObjectPath(Candidate)))
+			{
+				BodyMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(Candidate));
+				break;
+			}
+		}
+	}
+	if (!AssetExists(BodyAnimClass.ToSoftObjectPath()))
+	{
+		static const TCHAR* AnimCandidates[] = {
+			TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C"),
+			TEXT("/Game/Characters/Mannequins/Animations/ABP_Manny.ABP_Manny_C"),
+			TEXT("/Game/Characters/Mannequins/Animations/ABP_Quinn.ABP_Quinn_C"),
+		};
+		for (const TCHAR* Candidate : AnimCandidates)
+		{
+			if (AssetExists(FSoftObjectPath(Candidate)))
+			{
+				BodyAnimClass = TSoftClassPtr<UAnimInstance>(FSoftObjectPath(Candidate));
+				break;
+			}
+		}
+	}
 
 	if (!MeshComp->GetSkeletalMeshAsset() && AssetExists(BodyMesh.ToSoftObjectPath()))
 	{
@@ -771,8 +755,7 @@ void ANACharacterBase::ResolveAppearance()
 	}
 
 	const bool bRealBody = HasRealBody();
-	FallbackBody->SetVisibility(!bRealBody);
-	FallbackVisor->SetVisibility(!bRealBody);
+	SetFallbackVisible(!bRealBody);
 
 	// With a real skeleton, bullets hit the mesh (per-bone headshots); with a stand-in they hit the capsule.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(NA_TRACE_WEAPON, bRealBody ? ECR_Ignore : ECR_Block);

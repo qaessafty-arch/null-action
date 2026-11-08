@@ -129,6 +129,8 @@ ANATerrainManager::ANATerrainManager()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cone(TEXT("/Engine/BasicShapes/Cone.Cone"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	SphereShape = Sphere.Object;
 	BaseMaterial = ShapeMaterial.Object;
 	CylinderShape = Cylinder.Object;
 	ConeShape = Cone.Object;
@@ -157,6 +159,8 @@ void ANATerrainManager::BeginPlay()
 	BarkMaterial = MakeMaterial(FLinearColor(0.12f, 0.07f, 0.04f));
 	NeedleMaterial = MakeMaterial(FLinearColor(0.03f, 0.10f, 0.04f));
 	StoneMaterial = MakeMaterial(FLinearColor(0.25f, 0.24f, 0.23f));
+	GrassMaterial = MakeMaterial(FLinearColor(0.09f, 0.16f, 0.05f));
+	BushMaterial = MakeMaterial(FLinearColor(0.05f, 0.11f, 0.04f));
 }
 
 void ANATerrainManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -280,6 +284,7 @@ void ANATerrainManager::BuildChunk(const FIntPoint& Key)
 	FNATerrainChunk& Chunk = Chunks.Add(Key);
 	BuildGround(Chunk, Key);
 	BuildScatter(Chunk, Key);
+	BuildGroundCover(Chunk, Key);
 }
 
 void ANATerrainManager::BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key)
@@ -457,6 +462,58 @@ void ANATerrainManager::BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Ke
 	}
 }
 
+void ANATerrainManager::BuildGroundCover(FNATerrainChunk& Chunk, const FIntPoint& Key)
+{
+	if (GetNetMode() == NM_DedicatedServer || !ConeShape || !SphereShape)
+	{
+		return; // Purely visual.
+	}
+	Chunk.Grass = MakeInstances(ConeShape, GrassMaterial, false);
+	Chunk.Bushes = MakeInstances(SphereShape, BushMaterial, false);
+	Chunk.Grass->SetCullDistances(0, 6500);
+	Chunk.Grass->SetCastShadow(false);
+	Chunk.Bushes->SetCullDistances(0, 12000);
+
+	// Grass grows in patches (noise): thick and tall in some places, short and sparse in others.
+	constexpr int32 Cells = 32;
+	const float CellSize = ChunkSize / Cells;
+	FRandomStream Random(static_cast<int32>(HashCombine(GetTypeHash(Key.X * 31 + 7), GetTypeHash(Key.Y * 977 + 3))));
+	for (int32 CY = 0; CY < Cells; ++CY)
+	{
+		for (int32 CX = 0; CX < Cells; ++CX)
+		{
+			const float X = Key.X * ChunkSize + (CX + Random.FRandRange(0.f, 1.f)) * CellSize;
+			const float Y = Key.Y * ChunkSize + (CY + Random.FRandRange(0.f, 1.f)) * CellSize;
+			const float Z = NATerrain::HeightAt(X, Y);
+			const FVector Normal = NATerrain::NormalAt(X, Y);
+			// Keep clear of the arena floor, the cabin pad, the crater ash, water, cliffs and high snow.
+			if (FMath::Max(FMath::Abs(X), FMath::Abs(Y)) < 4300.f ||
+				FVector2D::Distance(FVector2D(X, Y), NATerrain::CabinCenter()) < 1000.f ||
+				FVector2D::Distance(FVector2D(X, Y), NATerrain::CraterCenter()) < 3100.f ||
+				Z < NATerrain::WaterLevel() + 70.f || Z > 4500.f || Normal.Z < 0.85f)
+			{
+				continue;
+			}
+			const float Patch = NATerrainDetail::Noise(X, Y, 2500.f, FVector2D(3.1f, -9.7f)); // -1..1
+			if (Random.FRand() > 0.55f + Patch * 0.35f)
+			{
+				continue;
+			}
+			const float Height = Random.FRandRange(25.f, 55.f) * (Patch > 0.f ? 1.f : 0.6f);
+			const FRotator Tilt(Random.FRandRange(-12.f, 12.f), Random.FRandRange(0.f, 360.f), Random.FRandRange(-12.f, 12.f));
+			Chunk.Grass->AddInstance(FTransform(Tilt, FVector(X, Y, Z + Height * 0.45f), FVector(0.07f, 0.07f, Height / 100.f)), true);
+
+			// Occasional low bush, more of them near the forest edge.
+			if (Random.FRand() < 0.025f + NATerrain::ForestDensityAt(X, Y) * 0.05f)
+			{
+				const float Size = Random.FRandRange(70.f, 160.f);
+				Chunk.Bushes->AddInstance(FTransform(FRotator(0.f, Random.FRandRange(0.f, 360.f), 0.f), FVector(X, Y, Z + Size * 0.3f),
+					FVector(Size, Size * Random.FRandRange(0.8f, 1.2f), Size * 0.7f) / 100.f), true);
+			}
+		}
+	}
+}
+
 bool ANATerrainManager::TryHarvest(const FVector& Location)
 {
 	const float Now = GetWorld()->GetTimeSeconds();
@@ -483,5 +540,7 @@ void ANATerrainManager::DestroyChunk(FNATerrainChunk& Chunk)
 	if (Chunk.Trunks)  { Chunk.Trunks->DestroyComponent(); }
 	if (Chunk.Foliage) { Chunk.Foliage->DestroyComponent(); }
 	if (Chunk.Rocks)   { Chunk.Rocks->DestroyComponent(); }
+	if (Chunk.Grass)   { Chunk.Grass->DestroyComponent(); }
+	if (Chunk.Bushes)  { Chunk.Bushes->DestroyComponent(); }
 	Chunk = FNATerrainChunk();
 }

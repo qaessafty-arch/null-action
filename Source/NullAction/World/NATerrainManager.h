@@ -37,6 +37,9 @@ struct FNATerrainChunk
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Trunks;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Foliage;
 	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Rocks;
+	/** Cosmetic ground cover (clients only, no collision, culled at a distance). */
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Grass;
+	UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> Bushes;
 };
 
 /**
@@ -80,6 +83,9 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInterface> BaseMaterial;
 	UPROPERTY() TObjectPtr<UStaticMesh> CylinderShape;
 	UPROPERTY() TObjectPtr<UStaticMesh> ConeShape;
+	UPROPERTY() TObjectPtr<UStaticMesh> SphereShape;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> GrassMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BushMaterial;
 	UPROPERTY() TObjectPtr<UStaticMesh> CubeShape;
 	UPROPERTY() TArray<TObjectPtr<UMaterialInstanceDynamic>> SurfaceMaterials;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BarkMaterial;
@@ -90,6 +96,7 @@ private:
 	void BuildChunk(const FIntPoint& Key);
 	void BuildGround(FNATerrainChunk& Chunk, const FIntPoint& Key);
 	void BuildScatter(FNATerrainChunk& Chunk, const FIntPoint& Key);
+	void BuildGroundCover(FNATerrainChunk& Chunk, const FIntPoint& Key);
 	void DestroyChunk(FNATerrainChunk& Chunk);
 	UInstancedStaticMeshComponent* MakeInstances(UStaticMesh* Shape, UMaterialInterface* Material, bool bCollision);
 	void GatherViewpoints(TArray<TPair<FVector, int32>>& OutViewpoints) const;
