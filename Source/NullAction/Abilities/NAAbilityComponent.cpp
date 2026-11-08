@@ -114,7 +114,7 @@ void UNAAbilityComponent::RequestActivate()
 	const FVector AimPoint = GetAimPoint();
 	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		Activate(AimPoint);
+		ActivatePower(AimPoint);
 	}
 	else
 	{
@@ -124,10 +124,10 @@ void UNAAbilityComponent::RequestActivate()
 
 void UNAAbilityComponent::ServerActivate_Implementation(FVector_NetQuantize AimPoint)
 {
-	Activate(AimPoint);
+	ActivatePower(AimPoint);
 }
 
-void UNAAbilityComponent::Activate(const FVector& AimPoint)
+void UNAAbilityComponent::ActivatePower(const FVector& AimPoint)
 {
 	const ANACharacterBase* Character = Cast<ANACharacterBase>(GetOwner());
 	const ENAArchetype Archetype = GetArchetype();

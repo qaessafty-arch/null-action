@@ -61,7 +61,7 @@ protected:
 	void MulticastLightning(FVector_NetQuantize Location);
 
 private:
-	void Activate(const FVector& AimPoint);
+	void ActivatePower(const FVector& AimPoint);
 	void ResolveStrike();
 	float ServerTime() const;
 	FVector GetAimPoint() const;

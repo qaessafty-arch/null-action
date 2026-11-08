@@ -19,6 +19,7 @@
 #include "Survival/NASurvivalComponent.h"
 #include "Inventory/NAInventoryComponent.h"
 #include "Abilities/NAAbilityComponent.h"
+#include "Combat/NAHealthComponent.h"
 #include "Weapons/NAWeapon.h"
 #include "Weapons/NAWeaponTypes.h"
 #include "World/NAWaterVolume.h"
