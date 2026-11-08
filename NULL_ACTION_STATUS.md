@@ -104,6 +104,10 @@ UnrealEditor.exe "C:\path\to\NullAction.uproject" 127.0.0.1:7777 -game -windowed
 4. A **packaged** dedicated server (`NullActionServer` target) needs a source-built engine. Running the editor binary with `-server` works with the launcher engine for testing.
 5. The "realistic human" is currently the Epic Mannequin. Realistic characters (e.g. MetaHuman) come later.
 
+## Saved roadmap
+
+The owner's Stage 2–7 prompts are saved in [`Docs/StagePrompts/`](Docs/StagePrompts/README.md). Stage 2 starts once Milestone 1 compiles and passes the checklist above.
+
 ## Next (Milestone 2)
 
 1. Fix anything from your first compile.
