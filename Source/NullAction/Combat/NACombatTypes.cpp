@@ -1,6 +1,7 @@
 #include "Combat/NACombatTypes.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Engine/HitResult.h"
 
 ENAHitZone NACombat::GetHitZone(const FHitResult& Hit)
@@ -22,6 +23,19 @@ ENAHitZone NACombat::GetHitZone(const FHitResult& Hit)
 			}
 		}
 		return ENAHitZone::Body;
+	}
+
+	// Creatures and other hand-built bodies tag their hittable parts.
+	if (const UPrimitiveComponent* Part = Hit.GetComponent())
+	{
+		if (Part->ComponentHasTag(TEXT("NA.Head")))
+		{
+			return ENAHitZone::Head;
+		}
+		if (Part->ComponentHasTag(TEXT("NA.Limb")))
+		{
+			return ENAHitZone::Limb;
+		}
 	}
 
 	// Stand-in bodies are hit on the capsule: top of the capsule is the head, bottom third the legs.

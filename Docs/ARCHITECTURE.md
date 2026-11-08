@@ -24,6 +24,7 @@ Source/
     Survival/   Stamina, hunger, thirst component
     Interaction/ INAInteractable interface, weapon and supply pickups
     AI/         Enemy soldier, perception-driven state machine controller, difficulty profiles
+    Creatures/  Ash Stalker predator (procedural body + animation) and its predator AI controller
 Docs/                   Architecture and decisions
 NULL_ACTION_STATUS.md   Live progress report
 ```

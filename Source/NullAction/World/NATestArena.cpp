@@ -103,6 +103,13 @@ ANATestArena::ANATestArena()
 	AddBox(TEXT("Yard_TallWall"),  FVector(3550.f, -2500.f, 0.f), FVector(40.f, 900.f, 300.f), FRotator::ZeroRotator, 1);
 	AddBox(TEXT("Yard_Container"), FVector(2650.f, -3450.f, 0.f), FVector(600.f, 240.f, 260.f), FRotator::ZeroRotator, 2);
 
+	// Ash Stalker den (back-left corner): a ring of dark rocks with a gap facing the arena.
+	AddBox(TEXT("Den_Rock1"), FVector(-3300.f, 2600.f, 0.f), FVector(260.f, 200.f, 160.f), FRotator(0.f, 20.f, 0.f), 0);
+	AddBox(TEXT("Den_Rock2"), FVector(-3100.f, 3300.f, 0.f), FVector(300.f, 220.f, 220.f), FRotator(0.f, -15.f, 0.f), 0);
+	AddBox(TEXT("Den_Rock3"), FVector(-2500.f, 3400.f, 0.f), FVector(240.f, 260.f, 140.f), FRotator(0.f, 40.f, 0.f), 0);
+	AddBox(TEXT("Den_Rock4"), FVector(-3500.f, 3050.f, 0.f), FVector(180.f, 240.f, 260.f), FRotator(0.f, 5.f, 0.f), 0);
+	AddBox(TEXT("Den_Bones"), FVector(-2850.f, 2950.f, 0.f), FVector(90.f, 20.f, 12.f), FRotator(0.f, 60.f, 0.f), 3);
+
 	// Environment lighting so an empty level is lit. Removed in BeginPlay if the level has its own sun.
 	Sun = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("Sun"));
 	Sun->SetupAttachment(Root);

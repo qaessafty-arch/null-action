@@ -9,6 +9,7 @@ class ANACharacterBase;
 class ANATestArena;
 class APlayerStart;
 class ANAEnemySoldier;
+class ANACreature;
 
 /**
  * Server-only rules for NULL-ACTION sessions. Exists only on the server (listen or dedicated);
@@ -31,6 +32,9 @@ public:
 	/** Called by characters when they die. Players respawn after RespawnDelaySeconds. */
 	void OnCharacterKilled(ANACharacterBase* Victim, AController* Killer);
 
+	/** Called by creatures when they die; a new one returns to the den later. */
+	void OnCreatureKilled(ANACreature* Creature);
+
 	/** Applies to every enemy now and to future spawns. */
 	void SetEnemyDifficulty(ENADifficulty NewDifficulty);
 	ENADifficulty GetEnemyDifficulty() const { return EnemyDifficulty; }
@@ -50,6 +54,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
 	float EnemyRespawnSeconds = 25.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
+	float CreatureRespawnSeconds = 45.f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Dev")
 	bool bBuildTestArenaInEmptyLevels = true;
 
@@ -64,6 +71,8 @@ private:
 	void SpawnArenaContent();
 	void RespawnPlayer(TWeakObjectPtr<AController> Controller);
 	void SpawnEnemy(int32 PostIndex);
+	void SpawnCreature();
+	FVector CreatureDenLocation = FVector::ZeroVector;
 
 	struct FEnemyPost
 	{

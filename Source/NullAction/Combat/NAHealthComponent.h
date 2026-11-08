@@ -32,6 +32,9 @@ public:
 	/** Server only. Returns the armor actually added. */
 	float AddArmor(float Amount);
 
+	/** Set before play starts (e.g. in an owner's constructor) to change toughness. */
+	void SetMaxHealth(float NewMaxHealth) { MaxHealth = FMath::Max(1.f, NewMaxHealth); Health = MaxHealth; }
+
 	/** Server only. Brings a dead owner back with a fraction of max health (respawns, dummies, future revive). */
 	void Revive(float HealthFraction = 1.f);
 

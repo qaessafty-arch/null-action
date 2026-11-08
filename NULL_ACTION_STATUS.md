@@ -1,6 +1,41 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — Milestone 2B (enemy AI) written on top of 2A; neither compiled yet. Milestone 1 verified on owner's PC._
+_Last updated: 2026-11-08 — Milestone 2C (Ash Stalker creature) written. 2A compiles and works on owner's PC; 2B and 2C not yet built._
+
+## Milestone 2C: first creature, the ASH STALKER (Stage 2, part 3)
+
+Status: **written, not yet compiled or tested.**
+
+An original predator: low, long body; a row of ember-glowing spines down the back; glowing eyes; a long swaying tail. **Weak point: the head and eyes** (head-shot multiplier). 220 health.
+
+| Requirement | What exists now |
+|---|---|
+| Distinctive 3D model | Built from engine shapes in code (torso, chest, haunch, neck, head, jaw, fangs, eyes, 6 spines, 4 two-part legs with claws, 5-part tail). **Not** a sculpted, textured model: that needs Blender/ZBrush work or a licensed asset (see below). |
+| Locomotion animation | Procedural, in code: trotting legs (diagonal pairs), knee folding, body bounce, breathing at rest, tail sway, crouched posture while stalking. |
+| Attack animation | Bite: neck lunges forward and down, jaw opens. Replicated to all players. |
+| Detection | AI Perception: 30 m sight (wide 160° view), 40 m hearing (gunfire carries far). |
+| Hunting behaviour | Roam → Stalk (circles at ~9 m, low and slow) → Ambush/Hunt when you look away or after ~7 s → bite → spring back → charge again. |
+| Intelligence | Dodges sideways when you aim at it; ambushes unaware players instantly; drawn to gunshots; turns on an unseen shooter; flees to its den at 30% health and heals there to 70%; abandons prey that leaves its 45 m territory. |
+| Health and damage | Replicated health; body / head / leg hit zones; bite does 25 damage. |
+| Death animation | Collapses onto its side; eyes go dark. Respawns at the den after 45 s. |
+| Sound design | Code plays growl / bite / death sounds when they're assigned. **No sound files yet** (need licensed or original audio). |
+
+HUD: **"!! SOMETHING IS HUNTING YOU"** when it charges you; a faint **"...you feel watched"** while it stalks you.
+
+**Where:** its den is in the **far back-left corner**: turn around from spawn and go left, past the pillars. Look for dark rocks.
+
+**To get a real high-quality creature model later:** sculpt/rig/animate it in Blender (free) or buy a licensed creature on Fab.com, import it, and point a Blueprint subclass at it. The AI and gameplay code stay the same.
+
+### 2C test checklist
+- [ ] The Ash Stalker roams near its den, legs and tail animating
+- [ ] Getting seen: it circles you low and slow ("...you feel watched")
+- [ ] Turn your back: it charges ("!! SOMETHING IS HUNTING YOU"), bites (health drops 25), springs back, charges again
+- [ ] Aim at it while it circles: it darts sideways
+- [ ] Fire a gun far away: it comes toward the sound
+- [ ] Head shots do much more damage than body shots
+- [ ] Hurt it badly: it runs back to the den; later it comes back healed
+- [ ] Kill it: it collapses; a new one appears at the den ~45 s later
+- [ ] Multiplayer: both players see the same creature, moves and bites
 
 ## Milestone 2B: enemy soldier AI (Stage 2, part 2)
 

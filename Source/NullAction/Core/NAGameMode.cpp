@@ -8,6 +8,7 @@
 #include "AI/NAEnemySoldier.h"
 #include "Combat/NATrainingDummy.h"
 #include "Core/NAPlayerController.h"
+#include "Creatures/NACreature.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "Interaction/NAPickup.h"
@@ -201,6 +202,37 @@ void ANAGameMode::SpawnArenaContent()
 	{
 		SpawnEnemy(Index);
 	}
+
+	// Ash Stalker den in the far back-left corner (behind spawn, to the left).
+	CreatureDenLocation = ArenaTransform.TransformPosition(FVector(-2800.f, 2800.f, 80.f));
+	SpawnCreature();
+}
+
+void ANAGameMode::SpawnCreature()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	const FTransform Where(FRotator(0.f, -45.f, 0.f), CreatureDenLocation);
+	if (ANACreature* Creature = World->SpawnActorDeferred<ANACreature>(ANACreature::StaticClass(), Where,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+	{
+		Creature->SetDenLocation(CreatureDenLocation);
+		Creature->FinishSpawning(Where);
+	}
+}
+
+void ANAGameMode::OnCreatureKilled(ANACreature* Creature)
+{
+	if (!Creature)
+	{
+		return;
+	}
+	Creature->SetLifeSpan(CorpseLifeSeconds * 2.f);
+	FTimerHandle Handle;
+	GetWorldTimerManager().SetTimer(Handle, this, &ANAGameMode::SpawnCreature, CreatureRespawnSeconds, false);
 }
 
 void ANAGameMode::SpawnEnemy(int32 PostIndex)

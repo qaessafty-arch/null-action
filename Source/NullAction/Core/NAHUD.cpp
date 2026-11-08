@@ -2,6 +2,7 @@
 
 #include "AI/NAEnemySoldier.h"
 #include "Character/NAPlayerCharacter.h"
+#include "Creatures/NACreature.h"
 #include "EngineUtils.h"
 #include "Combat/NAHealthComponent.h"
 #include "Engine/Canvas.h"
@@ -103,7 +104,7 @@ void ANAHUD::DrawHUD()
 			DrawText(Text, Color, 24.f, Y, nullptr, 0.9f);
 			Y += 16.f;
 		};
-		Line(TEXT("NULL-ACTION  //  dev build 0.3"), Accent);
+		Line(TEXT("NULL-ACTION  //  dev build 0.4"), Accent);
 		Line(TEXT("WASD move  Mouse look  Shift sprint  Alt walk  C crouch  Space jump"), TextColor);
 		Line(TEXT("LMB fire  RMB aim  R reload  E interact  1-4 / wheel switch weapon"), TextColor);
 		Line(FString::Printf(TEXT("Gait: %s%s   Speed: %.0f cm/s   %s"),
@@ -163,6 +164,29 @@ void ANAHUD::DrawHUD()
 			++Suspicious;
 		}
 	}
+	bool bHunted = false;
+	bool bStalked = false;
+	for (TActorIterator<ANACreature> It(GetWorld()); It; ++It)
+	{
+		if (It->IsDead() || It->GetPrey() != Player)
+		{
+			continue;
+		}
+		bHunted |= It->GetMood() == ENACreatureMood::Hunting;
+		bStalked |= It->GetMood() == ENACreatureMood::Stalking;
+	}
+
+	if (bHunted)
+	{
+		DrawRect(FLinearColor(0.55f, 0.15f, 0.f, 0.7f), CenterX - 150.f, 108.f, 300.f, 30.f);
+		DrawText(TEXT("!!  SOMETHING IS HUNTING YOU"), TextColor, CenterX - 135.f, 113.f, nullptr, 1.2f);
+	}
+	else if (bStalked)
+	{
+		// Deliberately subtle: a stalker should be unsettling, not announced.
+		DrawText(TEXT("...you feel watched"), FLinearColor(0.8f, 0.6f, 0.4f, 0.6f), CenterX - 70.f, 113.f, nullptr, 1.f);
+	}
+
 	if (Engaging > 0)
 	{
 		const FString Warning = Engaging == 1 ? TEXT("!  ENEMY ENGAGING") : FString::Printf(TEXT("!  %d ENEMIES ENGAGING"), Engaging);
