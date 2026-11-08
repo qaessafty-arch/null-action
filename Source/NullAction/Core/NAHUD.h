@@ -16,4 +16,7 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|HUD")
 	bool bShowDebugOverlay = true;
+
+private:
+	void DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Color, const FString& Label);
 };

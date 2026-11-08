@@ -1,0 +1,61 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "NASurvivalComponent.generated.h"
+
+/**
+ * Server-simulated stamina, hunger and thirst, replicated to the owning player.
+ * - Sprinting and jumping cost stamina; at zero you are exhausted and can't sprint until it recovers.
+ * - Low hunger/thirst slow stamina recovery; at zero they drain health.
+ * Temperature, oxygen and fatigue come with weather, water and sleep systems (later milestones).
+ */
+UCLASS(ClassGroup = (NullAction), meta = (BlueprintSpawnableComponent))
+class NULLACTION_API UNASurvivalComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	UNASurvivalComponent();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	bool CanSprint() const { return !bExhausted && Stamina > 5.f; }
+	bool HasStamina(float Amount) const { return !bExhausted && Stamina >= Amount; }
+
+	/** Server only. */
+	void ConsumeStamina(float Amount);
+	float RestoreFood(float Amount);
+	float RestoreWater(float Amount);
+
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetStaminaFraction() const { return MaxStamina > 0.f ? Stamina / MaxStamina : 0.f; }
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetHungerFraction() const { return MaxHunger > 0.f ? Hunger / MaxHunger : 0.f; }
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") float GetThirstFraction() const { return MaxThirst > 0.f ? Thirst / MaxThirst : 0.f; }
+	UFUNCTION(BlueprintPure, Category = "NullAction|Survival") bool IsExhausted() const { return bExhausted; }
+
+protected:
+	virtual void BeginPlay() override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Stamina") float MaxStamina = 100.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Stamina") float SprintDrainPerSecond = 16.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Stamina") float RegenPerSecond = 20.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Stamina") float RegenDelaySeconds = 1.2f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Stamina") float RecoverFromExhaustionAt = 30.f;
+
+	/** Full to empty in 45 / 30 minutes by default. */
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float MaxHunger = 100.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float HungerDrainPerSecond = 100.f / (45.f * 60.f);
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float MaxThirst = 100.f;
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float ThirstDrainPerSecond = 100.f / (30.f * 60.f);
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Survival|Needs") float StarvationDamagePerSecond = 1.f;
+
+	UPROPERTY(Replicated) float Stamina = 100.f;
+	UPROPERTY(Replicated) float Hunger = 100.f;
+	UPROPERTY(Replicated) float Thirst = 100.f;
+	UPROPERTY(Replicated) bool bExhausted = false;
+
+private:
+	float LastStaminaUseTime = -100.f;
+	float PendingStarvationDamage = 0.f;
+};

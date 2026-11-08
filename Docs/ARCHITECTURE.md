@@ -19,6 +19,10 @@ Source/
     Character/  ANACharacterBase (shared humanoid), ANAPlayerCharacter (camera + input)
     Animation/  UNAAnimInstance — native parent for every character AnimBP
     World/      ANATestArena — code-built movement test course
+    Combat/     Health/armor component, hit zones, training dummy
+    Weapons/    ANAWeapon base, four weapon types, tracer effect
+    Survival/   Stamina, hunger, thirst component
+    Interaction/ INAInteractable interface, weapon and supply pickups
 Docs/                   Architecture and decisions
 NULL_ACTION_STATUS.md   Live progress report
 ```
@@ -46,6 +50,16 @@ NULL_ACTION_STATUS.md   Live progress report
 * **Admin / owner powers (planned):** authorization will be checked in server code against
   server-side configuration or a backend; clients will only ever send *requests*. No credentials
   or permission lists will ship in the client.
+
+## Combat flow (server-authoritative)
+
+1. Owning client presses fire → `ANAWeapon::FireOnce` applies recoil locally and calls `ServerFire(viewOrigin, viewDir)`.
+2. Server rejects if dead, reloading, out of ammo, firing too fast, or the view origin is >6 m from the body.
+3. Server traces from the camera ray (moved level with the body) to find the aim point, then from the body's eyes to that point (no shooting around corners), on the `Weapon` trace channel.
+4. Damage goes through `ApplyPointDamage` → `ANACharacterBase::TakeDamage` → hit zone → `UNAHealthComponent::ApplyDamage` (armor, death).
+5. Server multicasts tracers/muzzle flash and sends the shooter a hit confirmation for the HUD.
+
+Clients never change health, ammo, inventory or pickups; they only send requests.
 
 ## Input
 

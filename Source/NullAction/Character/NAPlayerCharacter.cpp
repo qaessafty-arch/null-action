@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -13,6 +14,10 @@
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
+#include "Interaction/NAInteractable.h"
+#include "Survival/NASurvivalComponent.h"
+#include "Weapons/NAWeapon.h"
+#include "Weapons/NAWeaponTypes.h"
 
 ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -32,7 +37,12 @@ ANAPlayerCharacter::ANAPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
-	FollowCamera->SetFieldOfView(85.f);
+	FollowCamera->SetFieldOfView(DefaultFieldOfView);
+
+	SurvivalComponent = CreateDefaultSubobject<UNASurvivalComponent>(TEXT("Survival"));
+
+	// Every player starts with a pistol; the rest are found as pickups.
+	DefaultWeapons.Add(ANAWeapon_Pistol::StaticClass());
 }
 
 void ANAPlayerCharacter::Tick(float DeltaSeconds)
@@ -41,11 +51,105 @@ void ANAPlayerCharacter::Tick(float DeltaSeconds)
 
 	if (IsLocallyControlled())
 	{
-		const bool bMovingFast = IsSprinting() && GetVelocity().Size2D() > RunSpeed;
-		const float TargetLength = bMovingFast ? SprintArmLength : StandingArmLength;
-		CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetLength, DeltaSeconds, ArmLengthInterpSpeed);
+		UpdateCamera(DeltaSeconds);
+		UpdateInteractionFocus();
 	}
 }
+
+void ANAPlayerCharacter::UpdateCamera(float DeltaSeconds)
+{
+	const ANAWeapon* Weapon = GetCurrentWeapon();
+	const bool bAimingWeapon = IsAiming() && Weapon;
+
+	float TargetLength = StandingArmLength;
+	float TargetFieldOfView = DefaultFieldOfView;
+	if (bAimingWeapon)
+	{
+		TargetLength = Weapon->GetStats().AimArmLength;
+		TargetFieldOfView = Weapon->GetStats().AimFieldOfView;
+	}
+	else if (IsSprinting() && GetVelocity().Size2D() > RunSpeed)
+	{
+		TargetLength = SprintArmLength;
+	}
+
+	CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetLength, DeltaSeconds, CameraInterpSpeed);
+	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, TargetFieldOfView, DeltaSeconds, CameraInterpSpeed));
+}
+
+void ANAPlayerCharacter::UpdateInteractionFocus()
+{
+	FocusedInteractable = nullptr;
+	if (IsDead())
+	{
+		return;
+	}
+
+	const FVector Start = FollowCamera->GetComponentLocation();
+	const FVector End = Start + FollowCamera->GetForwardVector() * (CameraBoom->TargetArmLength + InteractionRange);
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(NAInteractFocus), false, this);
+	FHitResult Hit;
+	if (!GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	{
+		return;
+	}
+
+	AActor* Candidate = Hit.GetActor();
+	const INAInteractable* Interactable = Cast<INAInteractable>(Candidate);
+	if (Interactable && FVector::Dist(Candidate->GetActorLocation(), GetActorLocation()) <= InteractionRange && Interactable->CanInteract(this))
+	{
+		FocusedInteractable = Candidate;
+	}
+}
+
+void ANAPlayerCharacter::ServerInteract_Implementation(AActor* Target)
+{
+	INAInteractable* Interactable = Cast<INAInteractable>(Target);
+	if (!Interactable || IsDead())
+	{
+		return;
+	}
+	// Anti-cheat: the server re-checks range (with slack for latency) and availability.
+	if (FVector::Dist(Target->GetActorLocation(), GetActorLocation()) > InteractionRange + 150.f || !Interactable->CanInteract(this))
+	{
+		return;
+	}
+	Interactable->Interact(this);
+}
+
+bool ANAPlayerCharacter::CanSprint() const
+{
+	return !IsAiming() && (!SurvivalComponent || SurvivalComponent->CanSprint());
+}
+
+void ANAPlayerCharacter::GetAimViewPoint(FVector& OutLocation, FRotator& OutRotation) const
+{
+	OutLocation = FollowCamera->GetComponentLocation();
+	OutRotation = GetControlRotation();
+}
+
+void ANAPlayerCharacter::ApplyRecoil(float PitchDegrees, float YawDegrees)
+{
+	if (IsLocallyControlled() && Controller)
+	{
+		FRotator Rotation = Controller->GetControlRotation();
+		Rotation.Pitch += PitchDegrees;
+		Rotation.Yaw += FMath::FRandRange(-YawDegrees, YawDegrees);
+		Controller->SetControlRotation(Rotation);
+	}
+}
+
+void ANAPlayerCharacter::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+	if (HasAuthority() && SurvivalComponent)
+	{
+		SurvivalComponent->ConsumeStamina(JumpStaminaCost);
+	}
+}
+
+// ----- Input ---------------------------------------------------------------------------------
 
 void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 {
@@ -54,28 +158,39 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 		return; // Designer-authored input in use.
 	}
 
-	auto MakeAction = [this](const TCHAR* Name, EInputActionValueType Type)
+	auto MakeAction = [this](const TCHAR* ActionName, EInputActionValueType Type)
 	{
-		UInputAction* Action = NewObject<UInputAction>(this, Name, RF_Transient);
+		UInputAction* Action = NewObject<UInputAction>(this, ActionName, RF_Transient);
 		Action->ValueType = Type;
 		return Action;
 	};
 
-	MoveAction   = MakeAction(TEXT("IA_Move"),   EInputActionValueType::Axis2D);
-	LookAction   = MakeAction(TEXT("IA_Look"),   EInputActionValueType::Axis2D);
-	JumpAction   = MakeAction(TEXT("IA_Jump"),   EInputActionValueType::Boolean);
-	SprintAction = MakeAction(TEXT("IA_Sprint"), EInputActionValueType::Boolean);
-	WalkAction   = MakeAction(TEXT("IA_Walk"),   EInputActionValueType::Boolean);
-	CrouchAction = MakeAction(TEXT("IA_Crouch"), EInputActionValueType::Boolean);
+	MoveAction           = MakeAction(TEXT("IA_Move"),           EInputActionValueType::Axis2D);
+	LookAction           = MakeAction(TEXT("IA_Look"),           EInputActionValueType::Axis2D);
+	JumpAction           = MakeAction(TEXT("IA_Jump"),           EInputActionValueType::Boolean);
+	SprintAction         = MakeAction(TEXT("IA_Sprint"),         EInputActionValueType::Boolean);
+	WalkAction           = MakeAction(TEXT("IA_Walk"),           EInputActionValueType::Boolean);
+	CrouchAction         = MakeAction(TEXT("IA_Crouch"),         EInputActionValueType::Boolean);
+	FireAction           = MakeAction(TEXT("IA_Fire"),           EInputActionValueType::Boolean);
+	AimAction            = MakeAction(TEXT("IA_Aim"),            EInputActionValueType::Boolean);
+	ReloadAction         = MakeAction(TEXT("IA_Reload"),         EInputActionValueType::Boolean);
+	InteractAction       = MakeAction(TEXT("IA_Interact"),       EInputActionValueType::Boolean);
+	NextWeaponAction     = MakeAction(TEXT("IA_NextWeapon"),     EInputActionValueType::Boolean);
+	PreviousWeaponAction = MakeAction(TEXT("IA_PreviousWeapon"), EInputActionValueType::Boolean);
+	WeaponSlotActions.Reset();
+	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot1"), EInputActionValueType::Boolean));
+	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot2"), EInputActionValueType::Boolean));
+	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot3"), EInputActionValueType::Boolean));
+	WeaponSlotActions.Add(MakeAction(TEXT("IA_WeaponSlot4"), EInputActionValueType::Boolean));
 
 	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NullActionDefault"), RF_Transient);
 
 	auto Swizzle = [IMC]() { return NewObject<UInputModifierSwizzleAxis>(IMC); }; // Default order YXZ: key value goes to Y.
-	auto Negate = [IMC](bool bX, bool bY)
+	auto Negate = [IMC](bool bNegateX, bool bNegateY)
 	{
 		UInputModifierNegate* Mod = NewObject<UInputModifierNegate>(IMC);
-		Mod->bX = bX;
-		Mod->bY = bY;
+		Mod->bX = bNegateX;
+		Mod->bY = bNegateY;
 		Mod->bZ = false;
 		return Mod;
 	};
@@ -83,9 +198,9 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	// Move: Y = forward/back, X = right/left.
 	IMC->MapKey(MoveAction, EKeys::W).Modifiers.Add(Swizzle());
 	{
-		FEnhancedActionKeyMapping& S = IMC->MapKey(MoveAction, EKeys::S);
-		S.Modifiers.Add(Swizzle());
-		S.Modifiers.Add(Negate(true, true));
+		FEnhancedActionKeyMapping& Back = IMC->MapKey(MoveAction, EKeys::S);
+		Back.Modifiers.Add(Swizzle());
+		Back.Modifiers.Add(Negate(true, true));
 	}
 	IMC->MapKey(MoveAction, EKeys::A).Modifiers.Add(Negate(true, true));
 	IMC->MapKey(MoveAction, EKeys::D);
@@ -116,6 +231,28 @@ void ANAPlayerCharacter::BuildDefaultInputIfNeeded()
 	IMC->MapKey(CrouchAction, EKeys::LeftControl);
 	IMC->MapKey(CrouchAction, EKeys::Gamepad_FaceButton_Right);
 
+	IMC->MapKey(FireAction, EKeys::LeftMouseButton);
+	IMC->MapKey(FireAction, EKeys::Gamepad_RightTrigger);
+
+	IMC->MapKey(AimAction, EKeys::RightMouseButton);
+	IMC->MapKey(AimAction, EKeys::Gamepad_LeftTrigger);
+
+	IMC->MapKey(ReloadAction, EKeys::R);
+	IMC->MapKey(ReloadAction, EKeys::Gamepad_FaceButton_Left);
+
+	IMC->MapKey(InteractAction, EKeys::E);
+	IMC->MapKey(InteractAction, EKeys::Gamepad_FaceButton_Top);
+
+	IMC->MapKey(NextWeaponAction, EKeys::MouseScrollUp);
+	IMC->MapKey(NextWeaponAction, EKeys::Gamepad_RightShoulder);
+	IMC->MapKey(PreviousWeaponAction, EKeys::MouseScrollDown);
+	IMC->MapKey(PreviousWeaponAction, EKeys::Gamepad_LeftShoulder);
+
+	IMC->MapKey(WeaponSlotActions[0], EKeys::One);
+	IMC->MapKey(WeaponSlotActions[1], EKeys::Two);
+	IMC->MapKey(WeaponSlotActions[2], EKeys::Three);
+	IMC->MapKey(WeaponSlotActions[3], EKeys::Four);
+
 	MappingContext = IMC;
 }
 
@@ -139,6 +276,22 @@ void ANAPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::Input_SprintCompleted);
 	Input->BindAction(WalkAction, ETriggerEvent::Started, this, &ThisClass::Input_WalkToggle);
 	Input->BindAction(CrouchAction, ETriggerEvent::Started, this, &ThisClass::Input_Crouch);
+	Input->BindAction(FireAction, ETriggerEvent::Started, this, &ThisClass::Input_FireStarted);
+	Input->BindAction(FireAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireCompleted);
+	Input->BindAction(AimAction, ETriggerEvent::Started, this, &ThisClass::Input_AimStarted);
+	Input->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::Input_AimCompleted);
+	Input->BindAction(ReloadAction, ETriggerEvent::Started, this, &ThisClass::Input_Reload);
+	Input->BindAction(InteractAction, ETriggerEvent::Started, this, &ThisClass::Input_Interact);
+	Input->BindAction(NextWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_NextWeapon);
+	Input->BindAction(PreviousWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_PreviousWeapon);
+
+	if (WeaponSlotActions.Num() >= 4)
+	{
+		Input->BindAction(WeaponSlotActions[0], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot1);
+		Input->BindAction(WeaponSlotActions[1], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot2);
+		Input->BindAction(WeaponSlotActions[2], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot3);
+		Input->BindAction(WeaponSlotActions[3], ETriggerEvent::Started, this, &ThisClass::Input_WeaponSlot4);
+	}
 }
 
 void ANAPlayerCharacter::PawnClientRestart()
@@ -150,6 +303,8 @@ void ANAPlayerCharacter::PawnClientRestart()
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
+			// After a respawn the previous body's mapping context is stale; start clean.
+			Subsystem->ClearAllMappings();
 			Subsystem->AddMappingContext(MappingContext, 0);
 		}
 	}
@@ -157,7 +312,7 @@ void ANAPlayerCharacter::PawnClientRestart()
 
 void ANAPlayerCharacter::Input_Move(const FInputActionValue& Value)
 {
-	if (!Controller)
+	if (!Controller || IsDead())
 	{
 		return;
 	}
@@ -179,10 +334,18 @@ void ANAPlayerCharacter::Input_Look(const FInputActionValue& Value)
 
 void ANAPlayerCharacter::Input_JumpStarted()
 {
+	if (IsDead())
+	{
+		return;
+	}
 	if (bIsCrouched)
 	{
 		UnCrouch(); // Jump from crouch stands up first, like most shooters.
 		return;
+	}
+	if (SurvivalComponent && !SurvivalComponent->HasStamina(JumpStaminaCost))
+	{
+		return; // Too exhausted to jump.
 	}
 	Jump();
 }
@@ -226,3 +389,57 @@ void ANAPlayerCharacter::UpdateDesiredGait()
 		SetDesiredGait(bWalkToggled ? ENAGait::Walk : ENAGait::Run);
 	}
 }
+
+void ANAPlayerCharacter::Input_FireStarted()
+{
+	if (ANAWeapon* Weapon = GetCurrentWeapon())
+	{
+		if (IsSprinting())
+		{
+			bSprintHeld = false;
+			SetDesiredGait(bWalkToggled ? ENAGait::Walk : ENAGait::Run); // Firing stops a sprint.
+		}
+		Weapon->StartFire();
+	}
+}
+
+void ANAPlayerCharacter::Input_FireCompleted()
+{
+	if (ANAWeapon* Weapon = GetCurrentWeapon())
+	{
+		Weapon->StopFire();
+	}
+}
+
+void ANAPlayerCharacter::Input_AimStarted()
+{
+	SetAiming(true);
+}
+
+void ANAPlayerCharacter::Input_AimCompleted()
+{
+	SetAiming(false);
+}
+
+void ANAPlayerCharacter::Input_Reload()
+{
+	if (ANAWeapon* Weapon = GetCurrentWeapon())
+	{
+		Weapon->RequestReload();
+	}
+}
+
+void ANAPlayerCharacter::Input_Interact()
+{
+	if (AActor* Target = FocusedInteractable.Get())
+	{
+		ServerInteract(Target);
+	}
+}
+
+void ANAPlayerCharacter::Input_NextWeapon()     { CycleWeapon(+1); }
+void ANAPlayerCharacter::Input_PreviousWeapon() { CycleWeapon(-1); }
+void ANAPlayerCharacter::Input_WeaponSlot1()    { EquipWeaponInSlot(1); }
+void ANAPlayerCharacter::Input_WeaponSlot2()    { EquipWeaponInSlot(2); }
+void ANAPlayerCharacter::Input_WeaponSlot3()    { EquipWeaponInSlot(3); }
+void ANAPlayerCharacter::Input_WeaponSlot4()    { EquipWeaponInSlot(4); }

@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "NAGameMode.generated.h"
 
+class ANACharacterBase;
 class ANATestArena;
 class APlayerStart;
 
@@ -11,8 +12,8 @@ class APlayerStart;
  * Server-only rules for NULL-ACTION sessions. Exists only on the server (listen or dedicated);
  * clients never see it, which is why authority decisions belong here and not on pawns.
  *
- * Dev convenience: in a level with no PlayerStarts, it builds the test arena and player starts,
- * so any empty level (including on a dedicated server) is immediately playable.
+ * Dev convenience: in a level with no PlayerStarts, it builds the test arena, spawn points,
+ * weapon/supply pickups and training dummies, so any empty level is immediately playable.
  */
 UCLASS()
 class NULLACTION_API ANAGameMode : public AGameModeBase
@@ -25,7 +26,17 @@ public:
 	virtual void StartPlay() override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
+	/** Called by characters when they die. Players respawn after RespawnDelaySeconds. */
+	void OnCharacterKilled(ANACharacterBase* Victim, AController* Killer);
+
 protected:
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
+	float RespawnDelaySeconds = 5.f;
+
+	/** How long a dead body stays in the world. */
+	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Rules")
+	float CorpseLifeSeconds = 15.f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "NullAction|Dev")
 	bool bBuildTestArenaInEmptyLevels = true;
 
@@ -37,6 +48,8 @@ protected:
 
 private:
 	void EnsureTestArenaIfLevelIsEmpty();
+	void SpawnArenaContent();
+	void RespawnPlayer(TWeakObjectPtr<AController> Controller);
 
 	UPROPERTY(Transient)
 	TObjectPtr<ANATestArena> TestArena;

@@ -1,6 +1,50 @@
 # NULL-ACTION — Development Status
 
-_Last updated: 2026-11-08 — Milestone 1 (project foundation + first playable character)_
+_Last updated: 2026-11-08 — Milestone 2A (combat foundation) written; Milestone 1 verified on owner's PC_
+
+## Milestone 2A: combat foundation (Stage 2, part 1)
+
+Status: **written, not yet compiled or tested on the owner's PC.**
+
+| System | What it does |
+|---|---|
+| Health + armor (`Combat/NAHealthComponent`) | Replicated, server-only changes. Armor absorbs 60% of body/limb damage (not headshots). Death and revive events. |
+| Hit zones (`Combat/NACombatTypes`) | Head / body / limb from bone names (real skeleton) or hit height on the capsule (stand-in body). |
+| Weapons (`Weapons/NAWeapon`, `NAWeaponTypes`) | Pistol, Assault Rifle (full-auto), Shotgun (9 pellets), Sniper Rifle (deep zoom). Each has damage, headshot/limb multipliers, fire rate, spread, recoil, magazine, reserve ammo and reload time. New guns are a subclass with new numbers. |
+| Server-authoritative shooting | Client sends view origin + direction; server checks fire rate, ammo and origin distance, traces from camera then from the body's eyes (no shooting through walls), applies damage, confirms hits to the shooter, and multicasts tracers and muzzle flash. |
+| Inventory | One weapon per slot (1-4), replicated; switch with 1-4, mouse wheel or bumpers. Picking up a gun you own gives its ammo. |
+| Aiming | Hold RMB: camera zooms to the weapon's aim FOV, spread tightens, movement slows, body faces the aim direction. Sprinting stops aiming and firing. |
+| Survival (`Survival/NASurvivalComponent`) | Stamina (sprint and jump cost it; exhaustion blocks sprint until 30%), hunger and thirst drain over 45/30 min; low needs slow stamina regen; empty needs drain health. Server-simulated, replicated to the owner only. |
+| Interaction (`Interaction/NAInteractable`, `NAPickup`) | Look at an item, press E. Server re-checks range. Weapon pickups plus Ammo, Medkit, Armor, Food and Water supplies; they respawn after 20 s. Interface ready for doors, containers, crafting stations. |
+| Death + respawn | Characters fall over (ragdoll with a real skeleton), bodies stop blocking; players respawn after 5 s at an arena spawn point. |
+| Training dummies (`Combat/NATrainingDummy`) | Orange targets with the same hit zones and health; stand back up 3 s after dying. |
+| Combat HUD | Crosshair that widens with spread, hit marker with damage number / HEADSHOT / KILL, health/armor/stamina/food/water bars, weapon name, ammo, reload state, weapon slots, interaction prompt, damage flash, death screen. |
+
+### 2A test checklist
+
+Layout: weapon rack 5 m in front of spawn; supplies 4.5 m behind spawn; **shooting range to your left** (dummies at 22 m and 34 m).
+
+- [ ] Project compiles
+- [ ] HUD shows health, armor, stamina, food, water; pistol and ammo `12 / 48`
+- [ ] LMB fires: tracers, muzzle flash, ammo counts down, recoil kicks the view up
+- [ ] R reloads (HUD shows RELOADING); empty magazine auto-reloads
+- [ ] Look at a weapon on the rack: prompt `[E] Pick up Assault Rifle`; E picks it up and equips it
+- [ ] Rifle fires full-auto while LMB is held; shotgun fires a spread; sniper zooms deep with RMB
+- [ ] 1-4 and the mouse wheel switch weapons
+- [ ] Shooting a dummy shows a hit marker and damage; head shots show HEADSHOT; dummy falls over and stands up after 3 s
+- [ ] Sprinting drains stamina; at zero you can't sprint until it refills
+- [ ] Supplies: ammo refills reserve; medkit, armor, food and water raise their bars (only when not full)
+- [ ] 2 players (Play As Client): shooting the other player damages them, they die, respawn after 5 s
+- [ ] Each player only sees their own ammo/needs; both see tracers and deaths
+
+### Not in 2A (coming in 2B-2D, with honest limits)
+
+- **2B:** enemy soldier AI (patrol, perception, hearing gunshots, cover, difficulty levels).
+- **2C:** the creature. AI behaviour can be built in code; an original high-quality 3D model, textures and animations need to be made in Blender/ZBrush etc. or bought/licensed. I can't generate production art from here.
+- **2D:** prone, vault, slide, dodge, swim, climb, plus temperature and oxygen.
+- Weapon sounds, real gun models and character animations need imported assets. The code has slots for sounds; meshes/anims come with art.
+- Bullets are instant (hitscan); projectile travel and server lag compensation are later improvements.
+
 
 ## First test on owner's PC (2026-11-08)
 
